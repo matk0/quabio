@@ -4,11 +4,11 @@
 .env.production
 .env.staging
 
-# Deployment scripts and configs (server-specific)
-deploy.sh
-ssl-setup.sh
-nginx/
-docker-compose.prod.yml
+# Remove deployment files from gitignore - they're needed on server
+# deploy.sh
+# ssl-setup.sh  
+# nginx/
+# docker-compose.prod.yml
 
 # Runtime data
 chroma_data/
