@@ -58,11 +58,11 @@ wait_for_service() {
 
 # Stop existing containers
 echo_info "Stopping existing containers..."
-docker-compose -f docker-compose.prod.yml down || true
+docker compose -f docker-compose.prod.yml down || true
 
 # Build and start services
 echo_info "Building and starting services..."
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 # Wait for backend to be ready
 wait_for_service "Backend" "http://localhost:8000/ping"
@@ -74,7 +74,7 @@ DOC_COUNT=$(echo $STATS | grep -o '"document_count":[0-9]*' | cut -d: -f2 || ech
 
 if [ "$DOC_COUNT" -eq "0" ]; then
     echo_warn "RAG system not initialized. Running setup..."
-    docker-compose -f docker-compose.prod.yml exec -T backend python setup_rag.py
+    docker compose -f docker-compose.prod.yml exec -T backend python setup_rag.py
     echo_info "RAG system initialized with documents"
 else
     echo_info "RAG system already has $DOC_COUNT documents"
@@ -85,7 +85,7 @@ echo_info "Getting SSL certificates..."
 ./ssl-setup.sh
 
 echo_info "Restarting nginx with SSL..."
-docker-compose -f docker-compose.prod.yml restart nginx
+docker compose -f docker-compose.prod.yml restart nginx
 
 # Final health check
 echo_info "Running final health checks..."
@@ -102,10 +102,10 @@ else
         echo_info "🌐 Your MITO chatbot is available at: http://www.qua.bio"
     else
         echo_error "Deployment verification failed"
-        echo_info "Check logs with: docker-compose -f docker-compose.prod.yml logs"
+        echo_info "Check logs with: docker compose -f docker-compose.prod.yml logs"
         exit 1
     fi
 fi
 
 echo_info "🎉 Deployment complete!"
-echo_info "📊 Monitor with: docker-compose -f docker-compose.prod.yml logs -f"
+echo_info "📊 Monitor with: docker compose -f docker-compose.prod.yml logs -f"
