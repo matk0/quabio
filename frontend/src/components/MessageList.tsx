@@ -18,12 +18,10 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
           <div className="text-6xl mb-4">🧬</div>
-          <h2 className="text-2xl font-bold text-gray-700 mb-2">
-            Vitajte v MITO
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-700 mb-2">Vitajte</h2>
           <p className="text-gray-500 max-w-md">
-            Váš slovenský asistent pre otázky o zdraví, epigenetike a kvantovej biológii. 
-            Začnite konverzáciu otázkou nižšie.
+            Som Miťo, Váš slovenský asistent pre otázky o zdraví, epigenetike a
+            kvantovej biológii. Začnite konverzáciu otázkou nižšie.
           </p>
         </div>
       </div>
