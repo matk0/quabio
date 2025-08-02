@@ -102,3 +102,4 @@ def main():
         print("❌ Failed to setup RAG system")
 
 if __name__ == "__main__":
+    main()
