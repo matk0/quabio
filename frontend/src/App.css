@@ -79,8 +79,19 @@ body {
 
 /* Mobile-specific fixes */
 @media (max-width: 640px) {
-  /* Prevent placeholder text from being cut off */
+  /* Prevent zoom on input focus - iOS requires 16px minimum */
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* Placeholder can be smaller */
   textarea::placeholder {
-    font-size: 0.875rem;
+    font-size: 16px;
   }
 }

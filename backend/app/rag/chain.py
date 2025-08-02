@@ -101,20 +101,53 @@ Odpoveď:""")
         
         return sources[:3]  # Return top 3 sources
     
+    def _extract_sources_with_scores(self, docs_with_scores: List[tuple]) -> List[Source]:
+        """Extract source information from retrieved documents with actual similarity scores."""
+        sources = []
+        seen_titles = set()
+        
+        for doc, score in docs_with_scores:
+            title = doc.metadata.get('title', 'Bez názvu')
+            # Avoid duplicate sources
+            if title in seen_titles:
+                continue
+            seen_titles.add(title)
+            
+            # Create excerpt from the beginning of the content
+            content = doc.page_content
+            excerpt = content[:200] + "..." if len(content) > 200 else content
+            
+            # Convert distance score to similarity score (0-1 range)
+            # ChromaDB returns distance scores where lower is better
+            # We'll convert to similarity where higher is better
+            similarity_score = 1 / (1 + score)  # Convert distance to similarity
+            
+            source = Source(
+                title=title,
+                excerpt=excerpt,
+                url=doc.metadata.get('url', ''),
+                relevance_score=similarity_score
+            )
+            sources.append(source)
+        
+        # Sort by relevance score (highest first) and return top 3
+        sources.sort(key=lambda x: x.relevance_score, reverse=True)
+        return sources[:3]
+    
     async def chat(self, message: str, session_id: str = None) -> ChatResponse:
         """Process a chat message and return response with sources."""
         if not session_id:
             session_id = str(uuid.uuid4())
         
         try:
-            # Get relevant documents first for source extraction
-            relevant_docs = self.vector_store.similarity_search(message, k=6)
+            # Get relevant documents with scores for source extraction
+            relevant_docs_with_scores = self.vector_store.similarity_search_with_score(message, k=6)
             
             # Generate response using the chain
             response = await self.chain.ainvoke(message)
             
-            # Extract sources
-            sources = self._extract_sources(relevant_docs)
+            # Extract sources with actual scores
+            sources = self._extract_sources_with_scores(relevant_docs_with_scores)
             
             return ChatResponse(
                 response=response,
@@ -138,14 +171,14 @@ Odpoveď:""")
             session_id = str(uuid.uuid4())
         
         try:
-            # Get relevant documents first for source extraction
-            relevant_docs = self.vector_store.similarity_search(message, k=6)
+            # Get relevant documents with scores for source extraction
+            relevant_docs_with_scores = self.vector_store.similarity_search_with_score(message, k=6)
             
             # Generate response using the chain
             response = self.chain.invoke(message)
             
-            # Extract sources
-            sources = self._extract_sources(relevant_docs)
+            # Extract sources with actual scores
+            sources = self._extract_sources_with_scores(relevant_docs_with_scores)
             
             return ChatResponse(
                 response=response,
