@@ -8,7 +8,7 @@ set -e
 # Configuration
 DROPLET_IP="${1:-209.38.249.130}"
 APP_DIR="/opt/mito"
-REPO_URL="https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git"  # Update this
+REPO_URL="${REPO_URL:-https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git}"  # Update this or pass as env var
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -54,14 +54,14 @@ else
 fi
 
 # Stop existing containers if running
-docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
+docker-compose -f docker-compose.prod-ssl.yml down 2>/dev/null || true
 
 # Build and start application
 echo "🔨 Building application..."
-docker-compose -f docker-compose.prod.yml build --no-cache
+docker-compose -f docker-compose.prod-ssl.yml build --no-cache
 
-echo "🚀 Starting application..."
-docker-compose -f docker-compose.prod.yml up -d
+echo "🚀 Starting application with SSL..."
+docker-compose -f docker-compose.prod-ssl.yml up -d
 
 # Wait for application to be ready
 echo "⏳ Waiting for application to start..."
@@ -76,9 +76,9 @@ done
 
 # Show status
 echo "📊 Container status:"
-docker-compose -f docker-compose.prod.yml ps
+docker-compose -f docker-compose.prod-ssl.yml ps
 
-echo "🌐 Application deployed at: http://DROPLET_IP_PLACEHOLDER"
+echo "🌐 Application deployed at: https://qua.bio"
 EOF
 )
 
@@ -93,11 +93,11 @@ log_info "🚀 Executing deployment on droplet..."
 ssh -o StrictHostKeyChecking=no root@$DROPLET_IP "$DEPLOY_COMMANDS"
 
 log_info "✅ Deployment completed!"
-log_info "🌐 Your MITO app should be running at: http://$DROPLET_IP"
-log_info "🔍 Check health: curl http://$DROPLET_IP/ping"
+log_info "🌐 Your MITO app should be running at: https://qua.bio"
+log_info "🔍 Check health: curl https://qua.bio/ping"
 
 echo ""
 log_info "Next steps:"
-echo "1. Test your application: curl http://$DROPLET_IP/api/health"
-echo "2. Check logs: ssh root@$DROPLET_IP 'cd /opt/mito && docker-compose -f docker-compose.prod.yml logs'"
+echo "1. Test your application: curl https://qua.bio/api/health"
+echo "2. Check logs: ssh root@$DROPLET_IP 'cd /opt/mito && docker-compose -f docker-compose.prod-ssl.yml logs'"
 echo "3. Monitor: ssh root@$DROPLET_IP 'docker stats'"
