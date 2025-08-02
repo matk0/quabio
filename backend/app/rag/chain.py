@@ -42,11 +42,11 @@ NIKDY NEPOUŽÍVAJ TIETO FRÁZY:
 - "varovanie", "pozor", "nebezpečné", "škodlivé"
 
 Format odpovede:
-- Začni: "Podľa článkov Jaroslava Lachkyho..."
 - Prezentuj informácie z kontextu presne ako sú napísané
 - Používaj autorove vysvetlenia a prirovnania
 - Maximálne 250 slov
 - Žiadne hodnotiace komentáre
+- Keď je to vhodné, môžeš uviesť zdroj informácií
 
 Si ÚSTAMI autora, nie jeho kritikom."""),
             ("human", """Kontext z článkov:
