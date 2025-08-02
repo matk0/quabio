@@ -1,18 +1,18 @@
 import json
 import os
 from typing import List, Dict, Any
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
+from .chunkers.base import BaseChunker
+from .chunkers.fixed_size import FixedSizeChunker
+from .chunkers.semantic import SemanticChunker
 
 class SlovakArticleProcessor:
-    def __init__(self):
-        # Optimized for Slovak text processing
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,  # Smaller chunks for better Slovak context preservation
-            chunk_overlap=200,
-            separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""],
-            keep_separator=True
-        )
+    def __init__(self, chunker: BaseChunker = None):
+        # Use provided chunker or default to fixed size
+        if chunker is None:
+            self.chunker = FixedSizeChunker()
+        else:
+            self.chunker = chunker
     
     def load_articles(self, articles_path: str) -> List[Dict[str, Any]]:
         """Load all JSON articles from the directory."""
@@ -37,7 +37,9 @@ class SlovakArticleProcessor:
         articles = self.load_articles(articles_path)
         documents = []
         
-        for article in articles:
+        print(f"\n📚 Processing {len(articles)} articles using {self.chunker.get_chunker_name()} chunking...")
+        
+        for idx, article in enumerate(articles, 1):
             # Extract content with proper Slovak encoding
             content = article.get('content', '')
             title = article.get('title', '')
@@ -46,35 +48,37 @@ class SlovakArticleProcessor:
             word_count = article.get('word_count', 0)
             
             if not content or len(content.strip()) < 100:
+                print(f"  ⚠️  Skipping article {idx}/{len(articles)}: '{title}' (content too short)")
                 continue
+            
+            # Show progress for every article (important for semantic chunking)
+            print(f"\n📄 Article {idx}/{len(articles)}: {title[:60]}{'...' if len(title) > 60 else ''}")
             
             # Create the main document text
             full_text = f"Názov: {title}\n\n{content}"
             
-            # Split the content into chunks
-            chunks = self.text_splitter.split_text(full_text)
+            # Create metadata for this article
+            metadata = {
+                'title': title,
+                'url': url,
+                'date': date,
+                'word_count': word_count,
+                'source_file': article.get('source_file', ''),
+                'language': 'sk'
+            }
             
-            for i, chunk in enumerate(chunks):
-                # Create metadata for each chunk
-                metadata = {
-                    'title': title,
-                    'url': url,
-                    'date': date,
-                    'word_count': word_count,
-                    'chunk_id': i,
-                    'total_chunks': len(chunks),
-                    'source_file': article.get('source_file', ''),
-                    'language': 'sk'
-                }
-                
-                # Create Document object
-                doc = Document(
-                    page_content=chunk,
-                    metadata=metadata
-                )
-                documents.append(doc)
+            # Use the chunker to create document chunks
+            chunks = self.chunker.chunk_text(full_text, metadata)
+            documents.extend(chunks)
+            
+            # Show summary for this article
+            print(f"  ✅ Generated {len(chunks)} chunks from article {idx}/{len(articles)}")
+            
+            # Show overall progress every 10 articles for semantic chunking
+            if self.chunker.get_chunker_name() == "Semantic" and idx % 10 == 0:
+                print(f"\n📊 PROGRESS UPDATE: Completed {idx}/{len(articles)} articles, {len(documents)} total chunks so far")
         
-        print(f"Created {len(documents)} document chunks from {len(articles)} articles")
+        print(f"Created {len(documents)} document chunks from {len(articles)} articles using {self.chunker.get_chunker_name()} chunking")
         return documents
     
     def get_article_stats(self, articles_path: str) -> Dict[str, Any]:

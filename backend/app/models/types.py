@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
+
+class RAGVariant(str, Enum):
+    FIXED_SIZE = "fixed"
+    SEMANTIC = "semantic"
 
 class ChatRequest(BaseModel):
     message: str
@@ -15,6 +20,17 @@ class Source(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     sources: List[Source]
+    session_id: str
+    timestamp: datetime
+
+class VariantResponse(BaseModel):
+    variant_name: str
+    response: str
+    sources: List[Source]
+    processing_time: float
+
+class ComparisonResponse(BaseModel):
+    responses: List[VariantResponse]
     session_id: str
     timestamp: datetime
 

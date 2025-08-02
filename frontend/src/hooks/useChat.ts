@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Message, ChatResponse } from '../types';
+import { Message, ChatResponse, ComparisonResponse, VariantResponse } from '../types';
 import { mitoAPI } from '../services/api';
 
 export const useChat = () => {
@@ -33,7 +33,7 @@ export const useChat = () => {
       // Add loading message
       const loadingMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Spracúvam vašu otázku...',
+        text: 'Získavam odpovede z oboch variantov RAG systému...',
         sender: 'assistant',
         timestamp: new Date(),
         isLoading: true,
@@ -42,7 +42,8 @@ export const useChat = () => {
       setMessages((prev) => [...prev, loadingMessage]);
 
       try {
-        const response: ChatResponse = await mitoAPI.sendMessage(
+        // Always use comparison endpoint
+        const response: ComparisonResponse = await mitoAPI.sendMessageCompare(
           text,
           sessionId,
         );
@@ -52,17 +53,17 @@ export const useChat = () => {
           setSessionId(response.session_id);
         }
 
-        // Replace loading message with actual response
-        const assistantMessage: Message = {
+        // Replace loading message with comparison response
+        const comparisonMessage: Message = {
           id: (Date.now() + 2).toString(),
-          text: response.response,
+          text: '', // We'll handle display in ComparisonView
           sender: 'assistant',
           timestamp: new Date(response.timestamp),
-          sources: response.sources,
+          isComparison: true,
+          variantResponses: response.responses,
         };
 
-
-        setMessages((prev) => prev.slice(0, -1).concat(assistantMessage));
+        setMessages((prev) => prev.slice(0, -1).concat(comparisonMessage));
       } catch (error) {
         console.error('Chat error:', error);
 
@@ -81,6 +82,7 @@ export const useChat = () => {
     },
     [isLoading, sessionId],
   );
+
 
   const clearChat = useCallback(() => {
     setMessages([

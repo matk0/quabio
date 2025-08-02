@@ -6,11 +6,12 @@ from langchain.schema import Document
 from typing import List, Dict, Any
 import uuid
 from datetime import datetime
-from app.models.types import ChatResponse, Source
+from app.models.types import ChatResponse, Source, RAGVariant
 
 class MitoRAGChain:
-    def __init__(self, vector_store):
+    def __init__(self, vector_store, variant: RAGVariant = RAGVariant.FIXED_SIZE):
         self.vector_store = vector_store
+        self.variant = variant
         
         # Configure LLM optimized for Slovak responses
         self.llm = ChatOpenAI(
@@ -143,11 +144,23 @@ Odpoveď:""")
             # Get relevant documents with scores for source extraction
             relevant_docs_with_scores = self.vector_store.similarity_search_with_score(message, k=6)
             
+            # Debug logging for source extraction
+            vs_stats = self.vector_store.get_stats()
+            print(f"DEBUG [{self.variant.value}]: Vector store has {vs_stats.get('document_count', 0)} documents")
+            print(f"DEBUG [{self.variant.value}]: Found {len(relevant_docs_with_scores)} documents for query: '{message}'")
+            if len(relevant_docs_with_scores) == 0:
+                print(f"WARNING [{self.variant.value}]: No documents found! Vector store might be empty.")
+            for i, (doc, score) in enumerate(relevant_docs_with_scores[:3]):
+                title = doc.metadata.get('title', 'No title')
+                print(f"  Doc {i+1}: '{title}' (score: {score})")
+            
             # Generate response using the chain
             response = await self.chain.ainvoke(message)
             
             # Extract sources with actual scores
             sources = self._extract_sources_with_scores(relevant_docs_with_scores)
+            
+            print(f"DEBUG [{self.variant.value}]: Extracted {len(sources)} sources")
             
             return ChatResponse(
                 response=response,
@@ -157,7 +170,7 @@ Odpoveď:""")
             )
             
         except Exception as e:
-            print(f"Error in chat: {e}")
+            print(f"Error in chat [{self.variant.value}]: {e}")
             return ChatResponse(
                 response=f"Prepáčte, nastala chyba pri spracovaní vašej otázky: {str(e)}",
                 sources=[],

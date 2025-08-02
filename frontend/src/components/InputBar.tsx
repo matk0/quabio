@@ -51,6 +51,7 @@ export const InputBar: React.FC<InputBarProps> = ({
             className="flex-shrink-0 w-11 h-11 sm:w-auto sm:h-auto sm:px-4 sm:py-3 bg-mito-blue text-white rounded-lg hover:bg-mito-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
           >
             <Send className="h-5 w-5" />
+            <span className="hidden sm:inline ml-1 text-sm">Odoslať</span>
           </button>
         </div>
         
