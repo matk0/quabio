@@ -16,7 +16,7 @@ export const ChatInterface: React.FC = () => {
       <InputBar 
         onSend={sendMessage}
         disabled={isLoading}
-        placeholder="Napíšte vašu otázku o zdraví, epigenetike alebo kvantovej biológii..."
+        placeholder="Napíšte vašu otázku..."
       />
     </div>
   );
