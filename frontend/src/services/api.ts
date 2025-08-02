@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { ChatRequest, ChatResponse, HealthResponse } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// In production, API is served from same origin at /api
+// In development, use localhost:8000
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
 class MitoAPI {
   private client = axios.create({
