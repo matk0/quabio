@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   app:
+    env_file:
+      - .env.production
     build:
       context: .
       dockerfile: Dockerfile
