@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ChatRequest, ChatResponse, HealthResponse } from '../types';
+import { ChatRequest, ChatResponse, ComparisonResponse, HealthResponse } from '../types';
 
 // In production, API is served from same origin at /api
 // In development, use localhost:8000
@@ -36,6 +36,21 @@ class MitoAPI {
     } catch (error) {
       console.error('Health check failed:', error);
       throw new Error('Kontrola zdravia zlyhala');
+    }
+  }
+
+  async sendMessageCompare(message: string, sessionId?: string): Promise<ComparisonResponse> {
+    const request: ChatRequest = {
+      message,
+      session_id: sessionId,
+    };
+
+    try {
+      const response = await this.client.post<ComparisonResponse>('/api/chat/compare', request);
+      return response.data;
+    } catch (error) {
+      console.error('Error sending comparison message:', error);
+      throw new Error('Nastala chyba pri porovnaní odpovedí');
     }
   }
 

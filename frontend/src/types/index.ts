@@ -5,6 +5,8 @@ export interface Message {
   sources?: Source[];
   timestamp: Date;
   isLoading?: boolean;
+  isComparison?: boolean;
+  variantResponses?: VariantResponse[];
 }
 
 export interface Source {
@@ -22,6 +24,19 @@ export interface ChatRequest {
 export interface ChatResponse {
   response: string;
   sources: Source[];
+  session_id: string;
+  timestamp: string;
+}
+
+export interface VariantResponse {
+  variant_name: string;
+  response: string;
+  sources: Source[];
+  processing_time: number;
+}
+
+export interface ComparisonResponse {
+  responses: VariantResponse[];
   session_id: string;
   timestamp: string;
 }

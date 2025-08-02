@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create directory for ChromaDB
-RUN mkdir -p /app/chroma_db
+# Create directories for ChromaDB variants
+RUN mkdir -p /app/chroma_db /app/chroma_db_semantic
 
 # Expose port
 EXPOSE 8000

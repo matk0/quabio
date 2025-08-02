@@ -9,6 +9,7 @@ services:
       - ENVIRONMENT=development
     volumes:
       - chroma_data:/app/chroma_db
+      - chroma_data_semantic:/app/chroma_db_semantic
     ports:
       - "8000:8000"
     healthcheck:
@@ -28,3 +29,4 @@ services:
 
 volumes:
   chroma_data:
+  chroma_data_semantic:
