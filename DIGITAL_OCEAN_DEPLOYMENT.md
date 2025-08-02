@@ -1,48 +1,84 @@
-# Digital Ocean Docker Deployment Guide
+# Digital Ocean Docker Marketplace Deployment Guide
 
-This guide walks you through deploying the MITO Slovak health chatbot to a Digital Ocean droplet using Docker.
+This guide walks you through deploying the MITO Slovak health chatbot to a Digital Ocean Docker Marketplace droplet using Git.
 
 ## Prerequisites
 
-- Digital Ocean account
-- SSH key pair for server access
+- Digital Ocean Docker Marketplace droplet (pre-configured with Docker)
+- GitHub repository with your code
 - OpenAI API key
-- Local machine with Docker and SSH client
+- SSH access to your droplet
 
-## Quick Deployment (Automated)
+## Quick Git-Based Deployment
 
-### 1. Create Environment File
-
-```bash
-cp .env.example .env.production
-# Edit .env.production with your OpenAI API key
-```
-
-### 2. Deploy with Script
+### 1. Connect to Your Droplet
 
 ```bash
-# Make script executable
-chmod +x deploy.sh
-
-# Deploy to your droplet
-./deploy.sh YOUR_DROPLET_IP ~/.ssh/your_private_key
+ssh root@209.38.249.130
+# Or use your actual droplet IP
 ```
 
-The script automatically:
-- Sets up Docker and Docker Compose on the server
-- Uploads and deploys your application
-- Starts the services with health checks
-- Provides deployment status
+### 2. Clone Your Repository
 
-## Manual Deployment
+```bash
+# Clone your repository
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+cd YOUR_REPO_NAME
 
-### 1. Create Digital Ocean Droplet
+# Or if using private repo with SSH key
+git clone git@github.com:YOUR_USERNAME/YOUR_REPO_NAME.git
+cd YOUR_REPO_NAME
+```
 
-**Recommended Specs:**
-- **Size**: Basic droplet, 2 GB RAM / 1 vCPU / 50 GB SSD ($12/month)
-- **OS**: Ubuntu 22.04 LTS
-- **Datacenter**: Choose closest to your users
-- **Authentication**: SSH key (recommended)
+### 3. Set Up Environment Variables
+
+```bash
+# Create production environment file
+cp .env.production.example .env.production
+
+# Edit with your OpenAI API key
+nano .env.production
+```
+
+Add your OpenAI API key:
+```env
+OPENAI_API_KEY=sk-your-openai-api-key-here
+ENVIRONMENT=production
+CHROMA_PERSIST_DIR=/app/chroma_db
+```
+
+### 4. Deploy with Docker Compose
+
+```bash
+# Build and start the application
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Check status
+docker-compose -f docker-compose.prod.yml ps
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
+```
+
+### 5. Verify Deployment
+
+```bash
+# Test the application
+curl http://localhost/ping
+
+# Check if both frontend and backend are working
+curl http://localhost/api/health
+```
+
+Your app will be available at: `http://209.38.249.130` (or your actual droplet IP)
+
+## Docker Marketplace Droplet Advantages
+
+The Docker marketplace droplet comes pre-configured with:
+- ✅ Docker Engine installed
+- ✅ Docker Compose installed  
+- ✅ Basic firewall configured
+- ✅ Automatic security updates
 
 ### 2. Connect to Your Droplet
 
