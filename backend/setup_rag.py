@@ -32,8 +32,33 @@ def main():
     print("📚 Processing Slovak articles...")
     processor = SlovakArticleProcessor()
     
-    # Get article statistics
-    articles_path = "data/articles"
+    # Get article statistics - handle different path structures
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    articles_path = os.path.join(script_dir, "data", "articles")
+    
+    # If that doesn't exist, try relative path
+    if not os.path.exists(articles_path):
+        articles_path = "data/articles"
+    
+    # Try absolute path for production
+    if not os.path.exists(articles_path):
+        articles_path = "/app/data/articles"
+    
+    # If still doesn't exist, show available paths for debugging
+    if not os.path.exists(articles_path):
+        print(f"❌ Articles directory not found at: {articles_path}")
+        print(f"Current working directory: {os.getcwd()}")
+        print("Available directories:")
+        for item in os.listdir("."):
+            if os.path.isdir(item):
+                print(f"  - {item}")
+        
+        # In production, this is a critical error
+        if os.getenv("ENVIRONMENT") == "production":
+            print("❌ CRITICAL: Articles not found in production environment")
+            sys.exit(1)
+        return
+    
     stats = processor.get_article_stats(articles_path)
     print(f"📊 Found {stats['total_articles']} articles")
     print(f"📊 Total words: {stats['total_words']:,}")
@@ -77,4 +102,3 @@ def main():
         print("❌ Failed to setup RAG system")
 
 if __name__ == "__main__":
-    main()

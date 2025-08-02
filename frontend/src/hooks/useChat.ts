@@ -61,6 +61,7 @@ export const useChat = () => {
           sources: response.sources,
         };
 
+
         setMessages((prev) => prev.slice(0, -1).concat(assistantMessage));
       } catch (error) {
         console.error('Chat error:', error);
