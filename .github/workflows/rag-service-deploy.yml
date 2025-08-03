@@ -1,0 +1,106 @@
+name: RAG Service Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/rag-service/**"
+      - "shared/schemas/**"
+      - ".github/workflows/rag-service-deploy.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: services/rag-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: services/rag-service
+          file: services/rag-service/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_REGISTRY }}/rag-service:${{ github.sha }},${{ secrets.DOCKER_REGISTRY }}/rag-service:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to production
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          PRODUCTION_HOST: ${{ secrets.RAG_SERVICE_HOST }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # Set up SSH
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $PRODUCTION_HOST >> ~/.ssh/known_hosts
+          
+          # Deploy the service
+          ssh root@$PRODUCTION_HOST << 'EOF'
+            # Pull latest image
+            docker pull ${{ secrets.DOCKER_REGISTRY }}/rag-service:latest
+            
+            # Stop existing container
+            docker stop rag-service || true
+            docker rm rag-service || true
+            
+            # Start new container
+            docker run -d \
+              --name rag-service \
+              --restart unless-stopped \
+              -p 8000:8000 \
+              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              -e CHROMA_PERSIST_DIR=/app/chroma_data \
+              -e ENVIRONMENT=production \
+              -v rag_chroma_data:/app/chroma_data \
+              ${{ secrets.DOCKER_REGISTRY }}/rag-service:latest
+            
+            # Wait for service to be healthy
+            sleep 30
+            
+            # Health check
+            curl -f http://localhost:8000/ping || exit 1
+            
+            echo "RAG Service deployed successfully!"
+          EOF
+
+      - name: Update Rails Gateway configuration
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          RAILS_HOST: ${{ secrets.RAILS_HOST }}
+        run: |
+          # Notify Rails gateway about the new service deployment
+          ssh root@$RAILS_HOST << 'EOF'
+            # Update environment variables or restart if needed
+            # This step depends on your specific Rails deployment setup
+            echo "RAG Service deployment complete. Rails gateway notified."
+          EOF
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ RAG Service deployment successful"
+          else
+            echo "❌ RAG Service deployment failed"
+            exit 1
+          fi

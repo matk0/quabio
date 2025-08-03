@@ -1,0 +1,63 @@
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <div>
+      <div class="text-center">
+        <div class="text-4xl mb-4">🧬</div>
+        <h2 class="text-3xl font-extrabold text-gray-900">
+          Registrácia do Miťo
+        </h2>
+        <p class="mt-2 text-sm text-gray-600">
+          Vytvorte si účet pre slovenského zdravotného asistenta
+        </p>
+      </div>
+    </div>
+    
+    <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { class: "mt-8 space-y-6" }) do |f| %>
+      <%= render "devise/shared/error_messages", resource: resource %>
+
+      <div class="space-y-4">
+        <div>
+          <%= f.label :email, "E-mailová adresa", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.email_field :email, 
+              autofocus: true, 
+              autocomplete: "email",
+              required: true,
+              class: "mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm",
+              placeholder: "váš@email.sk" %>
+        </div>
+
+        <div>
+          <%= f.label :password, "Heslo", class: "block text-sm font-medium text-gray-700" %>
+          <% if @minimum_password_length %>
+            <p class="text-xs text-gray-500 mb-1">
+              Minimálne <%= @minimum_password_length %> znakov
+            </p>
+          <% end %>
+          <%= f.password_field :password, 
+              autocomplete: "new-password",
+              required: true,
+              class: "mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm",
+              placeholder: "Vytvorte si heslo" %>
+        </div>
+
+        <div>
+          <%= f.label :password_confirmation, "Potvrdenie hesla", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.password_field :password_confirmation, 
+              autocomplete: "new-password",
+              required: true,
+              class: "mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm",
+              placeholder: "Zopakujte heslo" %>
+        </div>
+      </div>
+
+      <div>
+        <%= f.submit "Registrovať sa", 
+            class: "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" %>
+      </div>
+      
+      <div class="text-center">
+        <%= render "devise/shared/links" %>
+      </div>
+    <% end %>
+  </div>
+</div>

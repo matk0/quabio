@@ -1,0 +1,150 @@
+name: RAG Service CI
+
+on:
+  pull_request:
+    paths:
+      - "services/rag-service/**"
+      - "shared/schemas/**"
+      - ".github/workflows/rag-service-*"
+  push:
+    branches: [main]
+    paths:
+      - "services/rag-service/**"
+      - "shared/schemas/**"
+      - ".github/workflows/rag-service-*"
+
+defaults:
+  run:
+    working-directory: services/rag-service
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black flake8 isort mypy
+
+      - name: Run Black (code formatting check)
+        run: black --check --diff .
+
+      - name: Run isort (import sorting check)
+        run: isort --check-only --diff .
+
+      - name: Run Flake8 (linting)
+        run: flake8 .
+
+      - name: Run MyPy (type checking)
+        run: mypy app/ --ignore-missing-imports
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY_TEST }}
+          CHROMA_PERSIST_DIR: ./test_chroma_db
+        run: |
+          # Create test data directory
+          mkdir -p test_chroma_db
+          # Run tests with coverage
+          pytest -v --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: services/rag-service/coverage.xml
+          flags: rag-service
+          name: rag-service-coverage
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install safety bandit
+
+      - name: Run Safety (dependency vulnerability check)
+        run: safety check
+
+      - name: Run Bandit (security linting)
+        run: bandit -r app/ -f json -o bandit-report.json || true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: services/rag-service/bandit-report.json
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: services/rag-service
+          file: services/rag-service/Dockerfile
+          push: false
+          tags: rag-service:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker container
+        run: |
+          # Start the container
+          docker run -d --name test-rag-service -p 8000:8000 \
+            -e OPENAI_API_KEY=test-key \
+            rag-service:test
+          
+          # Wait for service to start
+          sleep 30
+          
+          # Test health endpoint
+          curl -f http://localhost:8000/ping || exit 1
+          
+          # Stop container
+          docker stop test-rag-service

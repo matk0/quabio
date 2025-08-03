@@ -1,0 +1,15 @@
+<div class="flex <%= message.user? ? 'justify-end' : 'justify-start' %>" id="message_<%= message.id %>">
+  <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg <%= message.user? ? 'bg-emerald-500 text-white' : 'bg-white border border-gray-200 text-gray-900' %>">
+    <% unless message.user? %>
+      <div class="flex items-center mb-1">
+        <div class="text-xs font-medium text-emerald-600">🧬 Miťo</div>
+      </div>
+    <% end %>
+    
+    <p class="text-sm whitespace-pre-wrap"><%= message.content %></p>
+    
+    <div class="text-xs <%= message.user? ? 'text-emerald-100' : 'text-gray-500' %> mt-1">
+      <%= message.created_at.strftime("%H:%M") %>
+    </div>
+  </div>
+</div>

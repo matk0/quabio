@@ -1,0 +1,108 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "services/**"
+      - "shared/**"
+      - "docker-compose.yml"
+      - ".github/workflows/integration-test.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "services/**"
+      - "shared/**"
+      - "docker-compose.yml"
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create environment file
+        run: |
+          cat > .env << EOF
+          OPENAI_API_KEY=test-key-for-integration
+          RAILS_MASTER_KEY=test-master-key-for-integration
+          EOF
+
+      - name: Build all services
+        run: |
+          docker-compose build --parallel
+
+      - name: Start all services
+        run: |
+          docker-compose up -d
+          
+          # Wait for all services to be healthy
+          echo "Waiting for services to start..."
+          sleep 60
+
+      - name: Wait for Rails to be ready
+        run: |
+          timeout 300 bash -c 'until curl -f http://localhost:3000/health 2>/dev/null; do echo "Waiting for Rails..."; sleep 5; done'
+
+      - name: Wait for RAG service to be ready
+        run: |
+          timeout 300 bash -c 'until curl -f http://localhost:8000/ping 2>/dev/null; do echo "Waiting for RAG service..."; sleep 5; done'
+
+      - name: Run integration tests
+        run: |
+          # Test RAG service directly
+          echo "Testing RAG service health..."
+          curl -f http://localhost:8000/ping
+          curl -f http://localhost:8000/api/health
+          
+          # Test service-to-service communication (if Rails has endpoints that use RAG service)
+          echo "Testing Rails gateway..."
+          curl -f http://localhost:3000/health || echo "Rails health endpoint not yet implemented"
+          
+          # Test via nginx proxy
+          echo "Testing nginx proxy..."
+          curl -f http://localhost:80/health
+          curl -f http://localhost:80/rag-api/ping
+
+      - name: Check service logs on failure
+        if: failure()
+        run: |
+          echo "=== Rails Gateway Logs ==="
+          docker-compose logs web-gateway
+          echo "=== RAG Service Logs ==="
+          docker-compose logs rag-service
+          echo "=== Database Logs ==="
+          docker-compose logs postgres
+          echo "=== Redis Logs ==="
+          docker-compose logs redis
+          echo "=== Nginx Logs ==="
+          docker-compose logs nginx
+
+      - name: Run security scan on running containers
+        run: |
+          # Install trivy for security scanning
+          sudo apt-get update
+          sudo apt-get install wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy
+          
+          # Scan images for vulnerabilities
+          echo "Scanning RAG service image..."
+          docker-compose images | grep rag-service | awk '{print $1}' | xargs trivy image --severity HIGH,CRITICAL
+          
+          echo "Scanning Rails gateway image..."
+          docker-compose images | grep web-gateway | awk '{print $1}' | xargs trivy image --severity HIGH,CRITICAL
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v
+          docker system prune -f

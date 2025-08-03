@@ -1,0 +1,29 @@
+<div class="space-y-2">
+  <%- if controller_name != 'sessions' %>
+    <%= link_to "Prihlásenie", new_session_path(resource_name), 
+        class: "text-emerald-600 hover:text-emerald-500 text-sm font-medium" %>
+  <% end %>
+
+  <%- if devise_mapping.registerable? && controller_name != 'registrations' %>
+    <%= link_to "Registrácia", new_registration_path(resource_name), 
+        class: "text-emerald-600 hover:text-emerald-500 text-sm font-medium" %>
+  <% end %>
+
+  <%- if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
+    <br>
+    <%= link_to "Zabudli ste heslo?", new_password_path(resource_name), 
+        class: "text-gray-500 hover:text-gray-700 text-xs" %>
+  <% end %>
+
+  <%- if devise_mapping.confirmable? && controller_name != 'confirmations' %>
+    <br>
+    <%= link_to "Neprišli vám pokyny na potvrdenie?", new_confirmation_path(resource_name), 
+        class: "text-gray-500 hover:text-gray-700 text-xs" %>
+  <% end %>
+
+  <%- if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) && controller_name != 'unlocks' %>
+    <br>
+    <%= link_to "Neprišli vám pokyny na odomknutie?", new_unlock_path(resource_name), 
+        class: "text-gray-500 hover:text-gray-700 text-xs" %>
+  <% end %>
+</div>

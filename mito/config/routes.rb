@@ -1,3 +1,15 @@
 Rails.application.routes.draw do
+  devise_for :users
+  
+  root 'chats#show'
+  
+  # Anonymous messaging for non-authenticated users
+  post 'anonymous_messages', to: 'anonymous_messages#create', as: :anonymous_messages
+  
+  # Authenticated user chats
+  resources :chats, only: [:index, :show] do
+    resources :messages, only: [:create]
+  end
+  
   get "up" => "rails/health#show", as: :rails_health_check
 end

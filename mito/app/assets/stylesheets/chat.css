@@ -1,0 +1,56 @@
+/* Chat specific styles */
+
+/* Ensure chat container takes full height */
+.chat-container {
+  height: calc(100vh - 4rem); /* Subtract navigation height */
+}
+
+/* Smooth scrolling for messages */
+#messages-container {
+  scroll-behavior: smooth;
+}
+
+/* Message bubble animations */
+.message-bubble {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom dropdown hover */
+.dropdown-hover:hover .dropdown-menu {
+  display: block;
+}
+
+/* Loading state for forms */
+form[data-turbo-submitting] input[type="submit"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Sidebar responsive behavior */
+@media (max-width: 768px) {
+  .chat-sidebar {
+    display: none;
+  }
+  
+  .chat-sidebar.mobile-open {
+    display: block;
+    position: fixed;
+    top: 4rem;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    background: white;
+  }
+}

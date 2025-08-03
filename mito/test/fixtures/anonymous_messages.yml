@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  anonymous_chat: one
+  content: MyText
+  role: MyString
+
+two:
+  anonymous_chat: two
+  content: MyText
+  role: MyString

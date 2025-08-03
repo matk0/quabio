@@ -19,6 +19,12 @@ gem "tailwindcss-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
 
+# Authentication system [https://github.com/heartcombo/devise]
+gem "devise"
+
+# HTTP client for API calls [https://github.com/httprb/http]
+gem "http"
+
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 

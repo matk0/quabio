@@ -1,0 +1,49 @@
+<div class="max-w-4xl mx-auto p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Všetky konverzácie</h1>
+    <%= link_to root_path, 
+        class: "bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium" do %>
+      + Nová konverzácia
+    <% end %>
+  </div>
+
+  <% if @chats.any? %>
+    <div class="space-y-4">
+      <% @chats.each do |chat| %>
+        <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+          <%= link_to chat_path(chat), class: "block" do %>
+            <div class="flex justify-between items-start">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-medium text-gray-900 truncate">
+                  <%= chat.display_title %>
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                  <%= pluralize(chat.messages.count, 'správa', 'správy', 'správ') %>
+                </p>
+              </div>
+              <div class="text-right ml-4">
+                <p class="text-sm text-gray-500">
+                  <%= time_ago_in_words(chat.last_message_at) %> ago
+                </p>
+                <p class="text-xs text-gray-400">
+                  <%= chat.created_at.strftime("%d.%m.%Y") %>
+                </p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center py-12">
+      <div class="text-6xl mb-4">🧬</div>
+      <h2 class="text-xl font-semibold mb-2">Žiadne konverzácie</h2>
+      <p class="text-gray-500 mb-6">Začnite svoju prvú konverzáciu s Miťo asistentom</p>
+      
+      <%= link_to root_path, 
+          class: "bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-md font-medium" do %>
+        Začať novú konverzáciu
+      <% end %>
+    </div>
+  <% end %>
+</div>
