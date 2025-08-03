@@ -16,6 +16,10 @@ class Source(BaseModel):
     excerpt: str
     url: str
     relevance_score: float
+    chunk_text: Optional[str] = None  # Full chunk content for modal
+    chunk_size: Optional[int] = None  # Size of the chunk
+    document_id: Optional[str] = None  # Document identifier
+    metadata: Optional[dict] = None  # Additional metadata from vector store
 
 class ChatResponse(BaseModel):
     response: str

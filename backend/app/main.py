@@ -22,11 +22,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # React development server
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",  # Alternative localhost
-        "https://*.vercel.app",   # Vercel deployments
-        "https://*.digitalocean.app",  # DigitalOcean deployments
+        "https://qua.bio",           # Rails production domain
+        "https://www.qua.bio",       # Rails production www
+        "http://localhost:3000",     # Rails development server
+        "http://localhost:3001",     # Legacy React development
+        "http://127.0.0.1:3000",     # Alternative localhost
+        "https://*.vercel.app",      # Vercel deployments
+        "https://*.digitalocean.app", # DigitalOcean deployments
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],

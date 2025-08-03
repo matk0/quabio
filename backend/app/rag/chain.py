@@ -127,7 +127,11 @@ Odpoveď:""")
                 title=title,
                 excerpt=excerpt,
                 url=doc.metadata.get('url', ''),
-                relevance_score=similarity_score
+                relevance_score=similarity_score,
+                chunk_text=content,  # Full chunk content
+                chunk_size=len(content),  # Size of the chunk
+                document_id=doc.metadata.get('id', f"{title}_{hash(content) % 10000}"),
+                metadata=doc.metadata  # All metadata for debugging
             )
             sources.append(source)
         
