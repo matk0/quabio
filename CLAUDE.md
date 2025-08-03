@@ -4,134 +4,84 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MITO is a Slovak health assistant RAG (Retrieval-Augmented Generation) chatbot specialized in health, epigenetics, and quantum biology. The application provides answers in Slovak based on a database of 179 specialized articles.
+This is a dual-stack RAG (Retrieval-Augmented Generation) application specialized in Slovak health, epigenetics, and quantum biology content:
 
-### Architecture
+- **Backend**: FastAPI Python application with LangChain RAG implementation (`/backend/`)
+- **Frontend**: Rails 8 application (currently vanilla, no functionality) (`/mito/`)
 
-**Full-stack RAG Application:**
-- **Backend**: FastAPI with LangChain, ChromaDB vector database, OpenAI GPT-4-turbo
-- **Frontend**: React 18 with TypeScript, Tailwind CSS, Framer Motion
-- **Data**: 179 Slovak JSON articles in `backend/data/articles/`
-- **Vector DB**: ChromaDB persisted in `chroma_data/` directory
+## Common Development Commands
 
-## Development Commands
+### Backend (FastAPI)
 
-### Backend Setup
 ```bash
+# Setup/Initialize RAG system with both chunking variants
 cd backend
-conda create -n mito-backend python=3.11
-conda activate mito-backend
-pip install -r requirements.txt
+python setup_rag.py --variant both
 
-# Initialize RAG system - REQUIRED before first run
-python setup_rag.py                    # Setup both variants (default)
-python setup_rag.py --variant fixed    # Setup only fixed-size chunking
-python setup_rag.py --variant semantic # Setup only semantic chunking
-python setup_rag.py --force            # Force rebuild existing databases
+# Run development server
+uvicorn app.main:app --reload
 
-uvicorn app.main:app --reload  # Start backend server on port 8000
+# Run with Docker
+docker-compose -f docker-compose.standalone.yml up
 ```
 
-### Frontend Setup
+### Frontend (Rails)
+
 ```bash
-cd frontend
-npm install
-npm start    # Development server on port 3000
-npm run build  # Production build
-npm test     # Run tests
+# Setup
+cd mito
+bundle install
+bin/rails db:create db:migrate
+
+# Run development server with Tailwind CSS compilation
+bin/dev
 ```
 
-### Docker Development
-```bash
-docker-compose up --build  # Full stack development
-docker-compose -f docker-compose.prod.yml up -d  # Production deployment
-```
+## Architecture
 
-### RAG System Management
-```bash
-# Initialize or rebuild vector databases
-python setup_rag.py --variant both     # Setup both variants
-python setup_rag.py --variant semantic # Setup semantic chunking only
-python setup_rag.py --force            # Force rebuild existing databases
+### RAG System Architecture
 
-# Backend debug endpoints for troubleshooting
-curl http://localhost:8000/api/debug/rag
-curl http://localhost:8000/api/health
-curl http://localhost:8000/api/rag/variants  # List available variants
-```
+The backend implements a sophisticated multi-variant RAG system:
 
-## Code Architecture
+1. **Two Chunking Strategies**:
+   - Fixed-size chunking (1000 tokens) - stored in `chroma_db/`
+   - Semantic chunking (based on sentence embeddings) - stored in `chroma_db_semantic/`
 
-### Backend Structure (`backend/app/`)
-- **`main.py`**: FastAPI application with CORS, serves React static files in production
-- **`api/chat.py`**: Chat endpoints including comparison functionality, health checks, debug endpoints
-- **`rag/chain.py`**: LangChain RAG implementation with Slovak-optimized prompts and variant support
-- **`rag/vector_store.py`**: ChromaDB wrapper supporting multiple collections for different variants
-- **`rag/data_processor.py`**: Processes Slovak JSON articles using pluggable chunking strategies
-- **`rag/chunkers/`**: Chunking strategy implementations (fixed-size, semantic)
-- **`rag/rag_factory.py`**: Factory for creating RAG services with different variants
-- **`models/types.py`**: Pydantic models for API requests/responses including comparison types
+2. **Factory Pattern** (`backend/app/rag/rag_factory.py`):
+   - Creates RAG instances based on variant type
+   - Supports comparison mode to query both variants
 
-### Frontend Structure (`frontend/src/`)
-- **`App.tsx`**: Main app with React Query client setup
-- **`components/ChatInterface.tsx`**: Main chat UI component with comparison support
-- **`components/ComparisonView.tsx`**: Side-by-side display of variant responses
-- **`hooks/useChat.ts`**: Custom hook for chat state management including comparison mode
-- **`services/api.ts`**: API client for backend communication including comparison endpoints
+3. **API Endpoints** (`backend/app/api/v1/`):
+   - `/chat` - Main chat endpoint supporting single variant or comparison mode
+   - `/health` - Health check endpoint
 
-### Key Features
-- **Multi-Variant RAG**: Compare responses from fixed-size vs semantic chunking
-- **Slovak Language Support**: Full Slovak interface with diacritical marks
-- **Source Citation**: Every response includes relevant article sources with variant-specific chunking
-- **Vector Search**: ChromaDB with OpenAI text-embedding-3-large embeddings
-- **Session Management**: UUID-based chat sessions
-- **Comparison UI**: Simple side-by-side display of different RAG variant responses
-- **Debug Endpoints**: Production-ready debugging at `/api/debug/*`
+4. **Data Source**: 190+ Slovak health articles in `backend/data/articles/`
 
-## Environment Configuration
+### Key Backend Components
 
-**Required Environment Variables:**
-```bash
-OPENAI_API_KEY=sk-...  # Required for LLM and embeddings
-ENVIRONMENT=development|production
-CHROMA_PERSIST_DIR=./chroma_db  # Vector database location
-```
+- `backend/app/rag/chain.py` - Core RAG chain implementation
+- `backend/app/rag/vector_store.py` - ChromaDB vector store management
+- `backend/app/rag/chunkers/` - Different chunking strategies
+- `backend/app/models/` - Pydantic models for API requests/responses
+
+### Frontend Status
+
+The Rails application in `/mito/` is currently a vanilla Rails 8 setup with:
+- Tailwind CSS configured
+- PostgreSQL database
+- No implemented functionality yet
+
+## Environment Variables
+
+Backend requires:
+- `OPENAI_API_KEY` - For GPT-4 access
+- CORS configuration supports multiple domains including `qua.bio` production domain
+
+## Testing
+
+Backend: No test framework currently configured (consider adding pytest)
+Frontend: Rails comes with Minitest and system test setup ready
 
 ## Deployment
 
-**Local Development:**
-1. Set up backend with `setup_rag.py`
-2. Start backend: `uvicorn app.main:app --reload`
-3. Start frontend: `npm start`
-
-**Docker Production:**
-- Uses `docker-compose.prod.yml` for production builds
-- Backend serves static frontend files
-- Health checks and monitoring endpoints included
-
-## Common Tasks
-
-**Adding New Articles:**
-1. Add JSON files to `backend/data/articles/`
-2. Run `python setup_rag.py` to reindex
-3. Restart backend server
-
-**Modifying Slovak Prompts:**
-Edit the system prompt in `backend/app/rag/chain.py:24-51` - contains specific instructions for Slovak health content presentation.
-
-**API Endpoints:**
-- `POST /api/chat` - Single variant response (backward compatible)
-- `POST /api/chat/compare` - Compare responses from all variants
-- `GET /api/rag/variants` - List available RAG variants
-- `GET /api/health` - System health check
-- `GET /api/stats` - RAG system statistics
-- `GET /api/debug/rag` - Debug vector store status
-- `GET /ping` - Simple monitoring endpoint
-
-**Chunking Strategies:**
-- **Fixed-Size**: 800 characters with 200 overlap, optimized for Slovak text
-- **Semantic**: Sentence-level embeddings with similarity clustering (threshold 0.75)
-
-**Vector Databases:**
-- `chroma_db/` - Fixed-size chunking collection
-- `chroma_db_semantic/` - Semantic chunking collection
+Backend supports Docker deployment with health checks and volume persistence for vector databases. The application is designed for production deployment on DigitalOcean and Vercel.
