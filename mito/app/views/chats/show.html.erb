@@ -77,14 +77,19 @@
       <!-- Message Input -->
       <div class="bg-white border-t border-gray-200 p-4" id="new_message">
         <% if user_signed_in? %>
-          <%= form_with model: [@chat, @message], local: false, id: "new_message" do |form| %>
+          <%= form_with model: [@chat, @message], local: false, id: "new_message", 
+              data: { controller: "chat-input", chat_input_form_target: "form" } do |form| %>
             <div class="flex space-x-3">
               <div class="flex-1">
                 <%= form.text_area :content, 
                     class: "h-full w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 resize-none",
                     rows: 2,
-                    placeholder: "Napíšte svoju otázku o zdraví...",
-                    required: true %>
+                    placeholder: "Napíšte svoju otázku o zdraví... (Enter na odoslanie, Shift+Enter pre nový riadok)",
+                    required: true,
+                    data: { 
+                      chat_input_target: "textarea",
+                      action: "keydown->chat-input#keydown input->chat-input#input"
+                    } %>
               </div>
               <div class="flex items-stretch">
                 <%= form.submit "Odoslať", 
@@ -93,14 +98,19 @@
             </div>
           <% end %>
         <% else %>
-          <%= form_with model: @message, url: anonymous_messages_path, local: false, id: "new_message" do |form| %>
+          <%= form_with model: @message, url: anonymous_messages_path, local: false, id: "new_message",
+              data: { controller: "chat-input", chat_input_form_target: "form" } do |form| %>
             <div class="flex space-x-3">
               <div class="flex-1">
                 <%= form.text_area :content, 
                     class: "h-full w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 resize-none",
                     rows: 2,
-                    placeholder: "Napíšte svoju otázku o zdraví...",
-                    required: true %>
+                    placeholder: "Napíšte svoju otázku o zdraví... (Enter na odoslanie, Shift+Enter pre nový riadok)",
+                    required: true,
+                    data: { 
+                      chat_input_target: "textarea",
+                      action: "keydown->chat-input#keydown input->chat-input#input"
+                    } %>
               </div>
               <div class="flex items-stretch">
                 <%= form.submit "Odoslať", 

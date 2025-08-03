@@ -61,3 +61,6 @@ backend/chroma_db_semantic/
 # Backup files
 *.bak
 *.backup
+
+mito/tmp
+mito/tmp/*

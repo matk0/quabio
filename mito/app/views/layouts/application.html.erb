@@ -73,18 +73,16 @@
       </div>
     </nav>
 
-    <!-- Flash Messages -->
-    <% if notice %>
-      <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded relative mt-16 mx-4 mb-4" role="alert">
-        <%= notice %>
-      </div>
-    <% end %>
-    
-    <% if alert %>
-      <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded relative mt-16 mx-4 mb-4" role="alert">
-        <%= alert %>
-      </div>
-    <% end %>
+    <!-- Flash Messages Container -->
+    <div id="flash-messages" class="fixed top-20 right-4 z-50 space-y-2 w-80">
+      <% if notice %>
+        <%= render 'shared/flash_alert', message: notice, type: 'notice' %>
+      <% end %>
+      
+      <% if alert %>
+        <%= render 'shared/flash_alert', message: alert, type: 'alert' %>
+      <% end %>
+    </div>
 
     <!-- Main Content -->
     <main class="pt-16 h-screen">

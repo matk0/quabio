@@ -3,8 +3,14 @@
   <%= render 'messages/message', message: @message %>
 <% end %>
 
-<!-- Append assistant message if present -->
-<% if @assistant_message %>
+<!-- Append assistant message(s) -->
+<% if @comparison_data %>
+  <!-- Admin comparison view -->
+  <%= turbo_stream.append "messages" do %>
+    <%= render 'messages/comparison_message', comparison_data: @comparison_data %>
+  <% end %>
+<% elsif @assistant_message %>
+  <!-- Regular single message view -->
   <%= turbo_stream.append "messages" do %>
     <%= render 'messages/message', message: @assistant_message %>
   <% end %>

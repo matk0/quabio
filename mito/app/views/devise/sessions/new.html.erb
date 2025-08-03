@@ -12,7 +12,15 @@
       </div>
     </div>
     
-    <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "mt-8 space-y-6" }) do |f| %>
+    <%= render "devise/shared/error_messages", resource: resource %>
+    
+    <% flash.each do |type, message| %>
+      <div class="<%= type == 'alert' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' %> border px-4 py-3 rounded mb-4" role="alert">
+        <%= message %>
+      </div>
+    <% end %>
+    
+    <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "mt-8 space-y-6", "data-turbo" => "false" }) do |f| %>
       <div class="rounded-md shadow-sm -space-y-px">
         <div>
           <%= f.label :email, "E-mailová adresa", class: "sr-only" %>

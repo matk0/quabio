@@ -11,7 +11,11 @@ class MessagesController < ApplicationController
       # Get assistant response from FastAPI
       assistant_response = get_assistant_response(@message.content)
       
-      if assistant_response
+      if assistant_response == :comparison
+        # For admin users with comparison data - don't create assistant messages
+        # The comparison data is stored in @comparison_data for the view
+      elsif assistant_response
+        # For regular users - create single assistant message
         @assistant_message = @chat.messages.create!(
           content: assistant_response,
           role: 'assistant'
@@ -47,18 +51,38 @@ class MessagesController < ApplicationController
 
   def get_assistant_response(user_message)
     begin
-      response = HTTP.timeout(30).post(
-        'http://localhost:8000/api/chat',
-        json: {
-          message: user_message,
-          session_id: @chat.id
-        }
-      )
+      if current_user.admin?
+        # Admin users get comparison responses
+        response = HTTP.timeout(30).post(
+          'http://localhost:8000/api/chat/compare',
+          json: {
+            message: user_message,
+            session_id: @chat.id
+          }
+        )
 
-      if response.status.success?
-        JSON.parse(response.body)['response']
+        if response.status.success?
+          @comparison_data = JSON.parse(response.body)
+          return :comparison # Signal that this is comparison data
+        else
+          Rails.logger.error "FastAPI Compare Error: #{response.status} - #{response.body}"
+          return 'Prepáčte, nastala chyba pri porovnaní odpovedí. Skúste to znovu.'
+        end
       else
-        'Prepáčte, nastala chyba pri spracovaní vašej otázky. Skúste to znovu.'
+        # Regular users get single response
+        response = HTTP.timeout(30).post(
+          'http://localhost:8000/api/chat',
+          json: {
+            message: user_message,
+            session_id: @chat.id
+          }
+        )
+
+        if response.status.success?
+          JSON.parse(response.body)['response']
+        else
+          'Prepáčte, nastala chyba pri spracovaní vašej otázky. Skúste to znovu.'
+        end
       end
     rescue => e
       Rails.logger.error "FastAPI Error: #{e.message}"
