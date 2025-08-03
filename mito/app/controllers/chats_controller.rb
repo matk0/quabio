@@ -1,10 +1,34 @@
 class ChatsController < ApplicationController
-  before_action :authenticate_user!, only: [:index]
+  before_action :authenticate_user!, only: [:index, :create, :destroy]
   before_action :set_chat, only: [:show]
   before_action :set_user_chats, only: [:index, :show]
 
   def index
-    @chats = current_user.chats.order(updated_at: :desc)
+    # Redirect to the main chat interface (same as root)
+    @chat = current_user.chats.first || create_new_user_chat
+    redirect_to chat_path(@chat)
+  end
+
+  def create
+    @chat = current_user.chats.create!(title: "Nová konverzácia")
+    redirect_to chat_path(@chat)
+  end
+
+  def destroy
+    @chat = current_user.chats.find(params[:id])
+    @chat.destroy!
+    
+    # Redirect to another chat or create a new one if no chats exist
+    remaining_chat = current_user.chats.order(updated_at: :desc).first
+    if remaining_chat
+      redirect_to chat_path(remaining_chat), notice: 'Konverzácia bola odstránená.'
+    else
+      # Create a new chat if user has no chats left
+      new_chat = create_new_user_chat
+      redirect_to chat_path(new_chat), notice: 'Konverzácia bola odstránená. Vytvorená nová konverzácia.'
+    end
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path, alert: 'Konverzácia nebola nájdená.'
   end
 
   def show
@@ -21,7 +45,11 @@ class ChatsController < ApplicationController
       @message = AnonymousMessage.new
     end
 
-    @messages = @chat.messages.ordered if @chat
+    if @chat
+      @messages = user_signed_in? ? 
+        @chat.messages.includes(:sources, :message_sources).ordered : 
+        @chat.anonymous_messages.includes(:sources, :message_sources).ordered
+    end
   end
 
   private

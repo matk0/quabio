@@ -7,7 +7,7 @@ Rails.application.routes.draw do
   post 'anonymous_messages', to: 'anonymous_messages#create', as: :anonymous_messages
   
   # Authenticated user chats
-  resources :chats, only: [:index, :show] do
+  resources :chats, only: [:index, :show, :create, :destroy] do
     resources :messages, only: [:create]
   end
   
