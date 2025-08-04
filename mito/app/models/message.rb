@@ -2,6 +2,8 @@ class Message < ApplicationRecord
   belongs_to :chat
   has_many :message_sources, as: :messageable, dependent: :destroy
   has_many :sources, through: :message_sources
+  has_many :message_chunks, as: :messageable, dependent: :destroy
+  has_many :chunks, through: :message_chunks
   has_many :api_usages, dependent: :destroy
 
   enum :role, { user: 'user', assistant: 'assistant' }
@@ -19,6 +21,13 @@ class Message < ApplicationRecord
     sources.includes(:message_sources)
            .where(message_sources: { messageable: self })
            .order('message_sources.relevance_score DESC')
+  end
+  
+  # Helper method to get chunks ordered by relevance
+  def chunks_by_relevance
+    chunks.includes(:message_chunks)
+          .where(message_chunks: { messageable: self })
+          .order('message_chunks.relevance_score DESC')
   end
   
   # Check if this message is part of a comparison group

@@ -109,8 +109,8 @@ class MessagesController < ApplicationController
   def get_assistant_response(user_message)
     begin
       if current_user.admin?
-        # Admin users get comparison responses (longer timeout for dual processing)
-        response = HTTP.timeout(60).post(
+        # Admin users get comparison responses (parallel processing should be faster)
+        response = HTTP.timeout(40).post(
           'http://localhost:8000/api/chat/compare',
           json: {
             message: user_message,
@@ -230,10 +230,11 @@ class MessagesController < ApplicationController
       source = Source.find_or_create_by(url: source_data['url']) do |s|
         s.title = source_data['title'] || 'Untitled'
         s.excerpt = source_data['excerpt']
-        s.chunk_text = source_data['chunk_text']
-        s.chunk_size = source_data['chunk_size']
-        s.document_id = source_data['document_id']
-        s.metadata = source_data['metadata']
+        # Remove deprecated fields - these are now in chunks
+        # s.chunk_text = source_data['chunk_text']
+        # s.chunk_size = source_data['chunk_size']
+        # s.document_id = source_data['document_id']
+        # s.metadata = source_data['metadata']
       end
       
       # Create the association with relevance score (avoid duplicates)
@@ -242,6 +243,26 @@ class MessagesController < ApplicationController
           source: source,
           relevance_score: source_data['relevance_score'] || 0.0
         )
+      end
+      
+      # Process chunks if they exist in the source data
+      if source_data['chunks'].is_a?(Array)
+        source_data['chunks'].each do |chunk_data|
+          persist_chunk_for_message(message, source, chunk_data)
+        end
+      else
+        # Fallback: create a single chunk from legacy source data
+        chunk_data = {
+          'id' => source_data['document_id'],
+          'content' => source_data['chunk_text'],
+          'excerpt' => source_data['excerpt'],
+          'chunk_size' => source_data['chunk_size'],
+          'chunk_type' => 'fixed', # Default for single messages
+          'relevance_score' => source_data['relevance_score'],
+          'document_id' => source_data['document_id'],
+          'metadata' => source_data['metadata']
+        }
+        persist_chunk_for_message(message, source, chunk_data) if chunk_data['content'].present?
       end
     rescue => e
       Rails.logger.error "Error persisting source: #{e.message}"
@@ -262,10 +283,11 @@ class MessagesController < ApplicationController
       source = Source.find_or_create_by(url: source_data['url']) do |s|
         s.title = source_data['title'] || 'Untitled'
         s.excerpt = source_data['excerpt']
-        s.chunk_text = source_data['chunk_text']
-        s.chunk_size = source_data['chunk_size']
-        s.document_id = source_data['document_id']
-        s.metadata = source_data['metadata']
+        # Remove deprecated fields - these are now in chunks
+        # s.chunk_text = source_data['chunk_text']
+        # s.chunk_size = source_data['chunk_size']
+        # s.document_id = source_data['document_id']
+        # s.metadata = source_data['metadata']
       end
       
       # Create the association with relevance score (avoid duplicates)
@@ -275,9 +297,56 @@ class MessagesController < ApplicationController
           relevance_score: source_data['relevance_score'] || 0.0
         )
       end
+      
+      # Process chunks if they exist in the source data
+      if source_data['chunks'].is_a?(Array)
+        source_data['chunks'].each do |chunk_data|
+          persist_chunk_for_message(message, source, chunk_data)
+        end
+      else
+        # Fallback: create a single chunk from legacy source data
+        chunk_data = {
+          'id' => source_data['document_id'],
+          'content' => source_data['chunk_text'],
+          'excerpt' => source_data['excerpt'],
+          'chunk_size' => source_data['chunk_size'],
+          'chunk_type' => message.variant || 'fixed',
+          'relevance_score' => source_data['relevance_score'],
+          'document_id' => source_data['document_id'],
+          'metadata' => source_data['metadata']
+        }
+        persist_chunk_for_message(message, source, chunk_data) if chunk_data['content'].present?
+      end
     rescue => e
       Rails.logger.error "Error persisting variant source: #{e.message}"
       # Continue processing other sources even if one fails
+    end
+  end
+  
+  def persist_chunk_for_message(message, source, chunk_data)
+    return unless chunk_data.is_a?(Hash) && chunk_data['content'].present?
+    
+    begin
+      # Find or create chunk by content and source (to avoid true duplicates)
+      chunk = source.chunks.find_or_create_by(
+        content: chunk_data['content'],
+        chunk_type: chunk_data['chunk_type'] || message.variant || 'fixed'
+      ) do |c|
+        c.excerpt = chunk_data['excerpt']
+        c.chunk_size = chunk_data['chunk_size'] || chunk_data['content'].length
+        c.document_id = chunk_data['document_id'] || chunk_data['id']
+        c.metadata = chunk_data['metadata']
+      end
+      
+      # Create message-chunk association with relevance score (avoid duplicates)
+      unless message.message_chunks.exists?(chunk: chunk)
+        message.message_chunks.create!(
+          chunk: chunk,
+          relevance_score: chunk_data['relevance_score'] || 0.0
+        )
+      end
+    rescue => e
+      Rails.logger.error "Error persisting chunk for message: #{e.message}"
     end
   end
   

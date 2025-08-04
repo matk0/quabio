@@ -131,15 +131,25 @@ export default class extends Controller {
   }
 
   addAssistantMessageToUI(messageData) {
+    // Deduplicate sources before rendering
+    const deduplicatedSources = this.deduplicateSourcesByUrl(messageData.sources || []);
     const messageHtml = this.createAssistantMessageHTML(
       messageData.content,
-      messageData.sources || [],
+      deduplicatedSources,
     );
     this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml);
   }
 
   addComparisonMessageToUI(comparisonData) {
-    const messageHtml = this.createComparisonMessageHTML(comparisonData);
+    // Deduplicate sources for each variant in comparison
+    const deduplicatedComparisonData = {
+      ...comparisonData,
+      responses: comparisonData.responses.map(response => ({
+        ...response,
+        sources: this.deduplicateSourcesByUrl(response.sources || [])
+      }))
+    };
+    const messageHtml = this.createComparisonMessageHTML(deduplicatedComparisonData);
     this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml);
   }
 
@@ -390,6 +400,24 @@ export default class extends Controller {
       .replace(/\n/g, '<br>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
+  }
+
+  deduplicateSourcesByUrl(sources) {
+    if (!Array.isArray(sources) || sources.length === 0) {
+      return sources;
+    }
+    
+    const sourceMap = new Map();
+    sources.forEach(source => {
+      if (!source || !source.url) return;
+      
+      const existing = sourceMap.get(source.url);
+      if (!existing || (source.relevance_score && source.relevance_score > existing.relevance_score)) {
+        sourceMap.set(source.url, source);
+      }
+    });
+    
+    return Array.from(sourceMap.values());
   }
 
   escapeHtml(text) {

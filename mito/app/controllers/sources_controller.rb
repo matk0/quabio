@@ -34,6 +34,23 @@ class SourcesController < ApplicationController
                               chats.id as chat_id, users.email as user_email')
                       .order('message_sources.relevance_score DESC, messages.created_at DESC')
 
+    # Get chunks for this source (all chunks, including those not yet used in messages)
+    @chunks = @source.chunks
+                     .left_joins(:message_chunks)
+                     .select('chunks.*, MAX(message_chunks.relevance_score) as max_relevance_score')
+                     .group('chunks.id')
+                     .order('max_relevance_score DESC NULLS LAST, chunks.created_at DESC')
+                     .includes(:message_chunks)
+    
+    # Calculate chunk stats
+    @chunk_stats = {
+      total_chunks: @source.chunk_count,
+      fixed_chunks: @source.chunks.fixed_size.count,
+      semantic_chunks: @source.chunks.semantic.count,
+      avg_chunk_size: @source.chunks.average(:chunk_size) || 0.0,
+      total_chunk_usage: @source.chunks.joins(:message_chunks).count
+    }
+
     # Calculate stats using the base query without the complex select
     @usage_stats = {
       total_uses: base_message_sources.count,

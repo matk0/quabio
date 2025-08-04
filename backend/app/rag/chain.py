@@ -6,7 +6,7 @@ from langchain.schema import Document
 from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
-from app.models.types import ChatResponse, Source, RAGVariant, UsageData
+from app.models.types import ChatResponse, Source, Chunk, RAGVariant, UsageData
 from app.callbacks.cost_tracking import CostTrackingCallback
 
 class MitoRAGChain:
@@ -104,35 +104,75 @@ Odpoveď:""")
         return sources[:3]  # Return top 3 sources
     
     def _extract_sources_with_scores(self, docs_with_scores: List[tuple]) -> List[Source]:
-        """Extract source information from retrieved documents with actual similarity scores."""
-        sources = []
+        """Extract source information from retrieved documents with actual similarity scores.
+        
+        Groups chunks by source URL and creates deduplicated sources with associated chunks.
+        """
+        # Group chunks by source URL
+        source_chunks_map = {}
         
         for doc, score in docs_with_scores:
             title = doc.metadata.get('title', 'Bez názvu')
             url = doc.metadata.get('url', '')
-            
-            # Create excerpt from the beginning of the content
             content = doc.page_content
-            excerpt = content[:200] + "..." if len(content) > 200 else content
             
             # Convert distance score to similarity score (0-1 range)
             # ChromaDB returns distance scores where lower is better
-            # We'll convert to similarity where higher is better
             similarity_score = 1 / (1 + score)  # Convert distance to similarity
             
-            source = Source(
-                title=title,
-                excerpt=excerpt,
-                url=url,
+            # Create chunk object
+            chunk = Chunk(
+                id=doc.metadata.get('id', f"{title}_{hash(content) % 10000}"),
+                content=content,
+                excerpt=content[:200] + "..." if len(content) > 200 else content,
+                chunk_size=len(content),
+                chunk_type=self.variant.value,  # "fixed" or "semantic"
                 relevance_score=similarity_score,
-                chunk_text=content,  # Full chunk content
-                chunk_size=len(content),  # Size of the chunk
                 document_id=doc.metadata.get('id', f"{title}_{hash(content) % 10000}"),
-                metadata=doc.metadata  # All metadata for debugging
+                metadata=doc.metadata
+            )
+            
+            # Group by source URL
+            if url not in source_chunks_map:
+                source_chunks_map[url] = {
+                    'title': title,
+                    'url': url,
+                    'chunks': [],
+                    'max_relevance_score': similarity_score
+                }
+            else:
+                # Update max relevance score
+                source_chunks_map[url]['max_relevance_score'] = max(
+                    source_chunks_map[url]['max_relevance_score'], 
+                    similarity_score
+                )
+            
+            source_chunks_map[url]['chunks'].append(chunk)
+        
+        # Convert to Source objects
+        sources = []
+        for source_data in source_chunks_map.values():
+            # Sort chunks by relevance score (highest first)
+            source_data['chunks'].sort(key=lambda x: x.relevance_score, reverse=True)
+            
+            # Use the best chunk's excerpt as the source excerpt
+            best_chunk = source_data['chunks'][0]
+            
+            source = Source(
+                title=source_data['title'],
+                excerpt=best_chunk.excerpt,
+                url=source_data['url'],
+                relevance_score=source_data['max_relevance_score'],
+                chunks=source_data['chunks'],
+                # Legacy fields for backward compatibility
+                chunk_text=best_chunk.content,
+                chunk_size=best_chunk.chunk_size,
+                document_id=best_chunk.document_id,
+                metadata=best_chunk.metadata
             )
             sources.append(source)
         
-        # Sort by relevance score (highest first) and return top 3
+        # Sort sources by max relevance score (highest first) and return top 3
         sources.sort(key=lambda x: x.relevance_score, reverse=True)
         return sources[:3]
     

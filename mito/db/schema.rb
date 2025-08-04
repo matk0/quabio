@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_04_070617) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_04_095240) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -54,6 +54,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_04_070617) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_chats_on_user_id"
+  end
+
+  create_table "chunks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "source_id", null: false
+    t.text "content", null: false
+    t.text "excerpt"
+    t.integer "chunk_size"
+    t.string "chunk_type", limit: 20
+    t.string "document_id"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chunk_size"], name: "index_chunks_on_chunk_size"
+    t.index ["chunk_type"], name: "index_chunks_on_chunk_type"
+    t.index ["document_id"], name: "index_chunks_on_document_id"
+    t.index ["metadata"], name: "index_chunks_on_metadata", using: :gin
+    t.index ["source_id"], name: "index_chunks_on_source_id"
+  end
+
+  create_table "message_chunks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "chunk_id", null: false
+    t.string "messageable_type", null: false
+    t.uuid "messageable_id", null: false
+    t.decimal "relevance_score", precision: 4, scale: 3, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chunk_id", "messageable_type", "messageable_id"], name: "index_message_chunks_uniqueness", unique: true
+    t.index ["chunk_id"], name: "index_message_chunks_on_chunk_id"
+    t.index ["messageable_type", "messageable_id"], name: "index_message_chunks_on_messageable"
+    t.index ["relevance_score"], name: "index_message_chunks_on_relevance_score"
   end
 
   create_table "message_sources", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -133,6 +163,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_04_070617) do
   add_foreign_key "anonymous_messages", "anonymous_chats"
   add_foreign_key "api_usages", "messages"
   add_foreign_key "chats", "users"
+  add_foreign_key "chunks", "sources"
+  add_foreign_key "message_chunks", "chunks"
   add_foreign_key "message_sources", "sources"
   add_foreign_key "messages", "chats"
 end

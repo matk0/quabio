@@ -11,11 +11,23 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
 
+class Chunk(BaseModel):
+    id: str
+    content: str
+    excerpt: str
+    chunk_size: int
+    chunk_type: str
+    relevance_score: float
+    document_id: Optional[str] = None
+    metadata: Optional[dict] = None
+
 class Source(BaseModel):
     title: str
     excerpt: str
     url: str
-    relevance_score: float
+    relevance_score: float  # Max relevance score from associated chunks
+    chunks: List[Chunk] = []  # All chunks from this source
+    # Legacy fields for backward compatibility
     chunk_text: Optional[str] = None  # Full chunk content for modal
     chunk_size: Optional[int] = None  # Size of the chunk
     document_id: Optional[str] = None  # Document identifier

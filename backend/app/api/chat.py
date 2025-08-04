@@ -6,6 +6,7 @@ from app.rag.rag_factory import RAGServiceFactory
 import os
 import time
 import uuid
+import asyncio
 from datetime import datetime
 from functools import lru_cache
 
@@ -121,12 +122,49 @@ async def get_stats():
             detail=f"Chyba pri získavaní štatistík: {str(e)}"
         )
 
+async def process_variant(variant: RAGVariant, message: str, session_id: str) -> VariantResponse:
+    """Process a single RAG variant and return the response."""
+    try:
+        start_time = time.time()
+        
+        # Get RAG chain for this variant
+        chain = get_rag_chain_for_variant(variant)
+        
+        # Process the chat message
+        response = await chain.chat(
+            message=message,
+            session_id=session_id
+        )
+        
+        processing_time = time.time() - start_time
+        
+        # Create variant response
+        return VariantResponse(
+            variant_name=RAGServiceFactory.get_variant_display_name(variant),
+            response=response.response,
+            sources=response.sources,
+            processing_time=processing_time,
+            usage=response.usage
+        )
+        
+    except Exception as e:
+        print(f"Error processing variant {variant}: {e}")
+        # Return error response for this variant
+        return VariantResponse(
+            variant_name=RAGServiceFactory.get_variant_display_name(variant),
+            response=f"Chyba pri spracovaní pomocou {RAGServiceFactory.get_variant_display_name(variant)}: {str(e)}",
+            sources=[],
+            processing_time=0.0,
+            usage=None
+        )
+
 @router.post("/chat/compare", response_model=ComparisonResponse)
 async def chat_compare_endpoint(request: ChatRequest):
     """
     Compare responses from different RAG variants.
     
     Returns responses from both fixed-size and semantic chunking variants.
+    Processes both variants in parallel to reduce response time.
     """
     try:
         if not request.message or len(request.message.strip()) < 2:
@@ -136,47 +174,14 @@ async def chat_compare_endpoint(request: ChatRequest):
             )
         
         session_id = request.session_id or str(uuid.uuid4())
-        responses = []
         
-        # Get responses from both variants
+        # Get responses from both variants in parallel
         variants_to_compare = [RAGVariant.FIXED_SIZE, RAGVariant.SEMANTIC]
         
-        for variant in variants_to_compare:
-            try:
-                start_time = time.time()
-                
-                # Get RAG chain for this variant
-                chain = get_rag_chain_for_variant(variant)
-                
-                # Process the chat message
-                response = await chain.chat(
-                    message=request.message,
-                    session_id=session_id
-                )
-                
-                processing_time = time.time() - start_time
-                
-                # Create variant response
-                variant_response = VariantResponse(
-                    variant_name=RAGServiceFactory.get_variant_display_name(variant),
-                    response=response.response,
-                    sources=response.sources,
-                    processing_time=processing_time,
-                    usage=response.usage
-                )
-                responses.append(variant_response)
-                
-            except Exception as e:
-                print(f"Error processing variant {variant}: {e}")
-                # Add error response for this variant
-                error_response = VariantResponse(
-                    variant_name=RAGServiceFactory.get_variant_display_name(variant),
-                    response=f"Chyba pri spracovaní pomocou {RAGServiceFactory.get_variant_display_name(variant)}: {str(e)}",
-                    sources=[],
-                    processing_time=0.0,
-                    usage=None
-                )
-                responses.append(error_response)
+        # Process both variants concurrently using asyncio.gather
+        responses = await asyncio.gather(
+            *[process_variant(variant, request.message, session_id) for variant in variants_to_compare]
+        )
         
         return ComparisonResponse(
             responses=responses,
