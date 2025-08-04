@@ -29,8 +29,8 @@ env:
   clear:
     SOLID_QUEUE_IN_PUMA: true
     DB_HOST: DB_HOST
-    # FastAPI internal URL
-    FASTAPI_URL: 'http://mito-fastapi:8000'
+    # FastAPI external URL - will be set to remote server
+    FASTAPI_URL: 'https://api.knowledgebase.studio'
     RAILS_LOG_LEVEL: info
 
 # Aliases
@@ -50,7 +50,6 @@ asset_path: /rails/public/assets
 # Configure the image builder
 builder:
   arch: amd64
-  remote: ssh://docker@64.225.100.110
   args:
     RUBY_VERSION: 3.3.5
   secrets:
@@ -62,18 +61,3 @@ ssh:
   keys:
     - ~/.ssh/id_rsa
 
-# Accessories - FastAPI backend
-accessories:
-  fastapi:
-    image: matk0/mito-fastapi
-    host: 165.232.68.195
-    # Only expose internally, not to the public
-    port: '127.0.0.1:8000:8000'
-    env:
-      clear:
-        PYTHONUNBUFFERED: 1
-      secret:
-        - OPENAI_API_KEY
-    volumes:
-      - '/opt/mito/fastapi/chroma_db:/app/chroma_db'
-      - '/opt/mito/fastapi/chroma_db_semantic:/app/chroma_db_semantic'
