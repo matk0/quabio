@@ -50,7 +50,6 @@ asset_path: /rails/public/assets
 # Configure the image builder
 builder:
   arch: amd64
-  remote: ssh://docker@64.225.100.110
   args:
     RUBY_VERSION: 3.3.5
   secrets:
