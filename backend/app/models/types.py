@@ -21,17 +21,26 @@ class Source(BaseModel):
     document_id: Optional[str] = None  # Document identifier
     metadata: Optional[dict] = None  # Additional metadata from vector store
 
+class UsageData(BaseModel):
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    response_time_ms: Optional[int] = None
+
 class ChatResponse(BaseModel):
     response: str
     sources: List[Source]
     session_id: str
     timestamp: datetime
+    usage: Optional[UsageData] = None
 
 class VariantResponse(BaseModel):
     variant_name: str
     response: str
     sources: List[Source]
     processing_time: float
+    usage: Optional[UsageData] = None
 
 class ComparisonResponse(BaseModel):
     responses: List[VariantResponse]

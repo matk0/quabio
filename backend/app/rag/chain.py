@@ -3,10 +3,11 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema import Document
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
-from app.models.types import ChatResponse, Source, RAGVariant
+from app.models.types import ChatResponse, Source, RAGVariant, UsageData
+from app.callbacks.cost_tracking import CostTrackingCallback
 
 class MitoRAGChain:
     def __init__(self, vector_store, variant: RAGVariant = RAGVariant.FIXED_SIZE):
@@ -105,14 +106,10 @@ Odpoveď:""")
     def _extract_sources_with_scores(self, docs_with_scores: List[tuple]) -> List[Source]:
         """Extract source information from retrieved documents with actual similarity scores."""
         sources = []
-        seen_titles = set()
         
         for doc, score in docs_with_scores:
             title = doc.metadata.get('title', 'Bez názvu')
-            # Avoid duplicate sources
-            if title in seen_titles:
-                continue
-            seen_titles.add(title)
+            url = doc.metadata.get('url', '')
             
             # Create excerpt from the beginning of the content
             content = doc.page_content
@@ -126,7 +123,7 @@ Odpoveď:""")
             source = Source(
                 title=title,
                 excerpt=excerpt,
-                url=doc.metadata.get('url', ''),
+                url=url,
                 relevance_score=similarity_score,
                 chunk_text=content,  # Full chunk content
                 chunk_size=len(content),  # Size of the chunk
@@ -144,6 +141,9 @@ Odpoveď:""")
         if not session_id:
             session_id = str(uuid.uuid4())
         
+        # Initialize cost tracking callback
+        callback = CostTrackingCallback()
+        
         try:
             # Get relevant documents with scores for source extraction
             relevant_docs_with_scores = self.vector_store.similarity_search_with_score(message, k=6)
@@ -158,19 +158,33 @@ Odpoveď:""")
                 title = doc.metadata.get('title', 'No title')
                 print(f"  Doc {i+1}: '{title}' (score: {score})")
             
-            # Generate response using the chain
-            response = await self.chain.ainvoke(message)
+            # Generate response using the chain with cost tracking
+            response = await self.chain.ainvoke(message, config={"callbacks": [callback]})
             
             # Extract sources with actual scores
             sources = self._extract_sources_with_scores(relevant_docs_with_scores)
             
             print(f"DEBUG [{self.variant.value}]: Extracted {len(sources)} sources")
             
+            # Get usage data (no cost calculation - Rails will handle that)
+            usage_data = None
+            if callback.has_usage_data():
+                usage_info = callback.get_usage_data()
+                
+                usage_data = UsageData(
+                    model=usage_info["model"],
+                    prompt_tokens=usage_info["prompt_tokens"],
+                    completion_tokens=usage_info["completion_tokens"],
+                    total_tokens=usage_info["total_tokens"],
+                    response_time_ms=usage_info["response_time_ms"]
+                )
+            
             return ChatResponse(
                 response=response,
                 sources=sources,
                 session_id=session_id,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
+                usage=usage_data
             )
             
         except Exception as e:
@@ -187,21 +201,38 @@ Odpoveď:""")
         if not session_id:
             session_id = str(uuid.uuid4())
         
+        # Initialize cost tracking callback
+        callback = CostTrackingCallback()
+        
         try:
             # Get relevant documents with scores for source extraction
             relevant_docs_with_scores = self.vector_store.similarity_search_with_score(message, k=6)
             
-            # Generate response using the chain
-            response = self.chain.invoke(message)
+            # Generate response using the chain with cost tracking
+            response = self.chain.invoke(message, config={"callbacks": [callback]})
             
             # Extract sources with actual scores
             sources = self._extract_sources_with_scores(relevant_docs_with_scores)
+            
+            # Get usage data (no cost calculation - Rails will handle that)
+            usage_data = None
+            if callback.has_usage_data():
+                usage_info = callback.get_usage_data()
+                
+                usage_data = UsageData(
+                    model=usage_info["model"],
+                    prompt_tokens=usage_info["prompt_tokens"],
+                    completion_tokens=usage_info["completion_tokens"],
+                    total_tokens=usage_info["total_tokens"],
+                    response_time_ms=usage_info["response_time_ms"]
+                )
             
             return ChatResponse(
                 response=response,
                 sources=sources,
                 session_id=session_id,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
+                usage=usage_data
             )
             
         except Exception as e:

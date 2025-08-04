@@ -161,7 +161,8 @@ async def chat_compare_endpoint(request: ChatRequest):
                     variant_name=RAGServiceFactory.get_variant_display_name(variant),
                     response=response.response,
                     sources=response.sources,
-                    processing_time=processing_time
+                    processing_time=processing_time,
+                    usage=response.usage
                 )
                 responses.append(variant_response)
                 
@@ -172,7 +173,8 @@ async def chat_compare_endpoint(request: ChatRequest):
                     variant_name=RAGServiceFactory.get_variant_display_name(variant),
                     response=f"Chyba pri spracovaní pomocou {RAGServiceFactory.get_variant_display_name(variant)}: {str(e)}",
                     sources=[],
-                    processing_time=0.0
+                    processing_time=0.0,
+                    usage=None
                 )
                 responses.append(error_response)
         
