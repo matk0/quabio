@@ -111,7 +111,7 @@ class MessagesController < ApplicationController
       if current_user.admin?
         # Admin users get comparison responses (parallel processing should be faster)
         response = HTTP.timeout(40).post(
-          'http://localhost:8000/api/chat/compare',
+          "#{Rails.configuration.fastapi_url}/api/chat/compare",
           json: {
             message: user_message,
             session_id: @chat.id
@@ -128,7 +128,7 @@ class MessagesController < ApplicationController
       else
         # Regular users get single response
         response = HTTP.timeout(30).post(
-          'http://localhost:8000/api/chat',
+          "#{Rails.configuration.fastapi_url}/api/chat",
           json: {
             message: user_message,
             session_id: @chat.id

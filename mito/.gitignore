@@ -47,6 +47,9 @@
 # Ignore node_modules
 /node_modules
 
+# Kamal
+.kamal/
+
 # Ignore yarn files
 /yarn-error.log
 yarn-debug.log*

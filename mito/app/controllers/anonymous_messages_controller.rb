@@ -57,7 +57,7 @@ class AnonymousMessagesController < ApplicationController
   def get_assistant_response(user_message)
     begin
       response = HTTP.timeout(30).post(
-        'http://localhost:8000/api/chat',
+        "#{Rails.configuration.fastapi_url}/api/chat",
         json: {
           message: user_message,
           session_id: @chat.session_id

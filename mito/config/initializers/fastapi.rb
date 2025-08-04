@@ -1,0 +1,1 @@
+Rails.application.config.fastapi_url = ENV.fetch('FASTAPI_URL', 'http://localhost:8000')
