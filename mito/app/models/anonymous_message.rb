@@ -16,4 +16,21 @@ class AnonymousMessage < ApplicationRecord
            .where(message_sources: { messageable: self })
            .order('message_sources.relevance_score DESC')
   end
+  
+  # Comparison methods (AnonymousMessage doesn't support comparison groups)
+  def comparison_message?
+    false
+  end
+  
+  def first_in_comparison_group?
+    false
+  end
+  
+  def comparison_siblings
+    AnonymousMessage.none
+  end
+  
+  def comparison_group_messages
+    AnonymousMessage.where(id: id)
+  end
 end
