@@ -9,11 +9,37 @@ class Message < ApplicationRecord
   validates :role, presence: true
 
   scope :ordered, -> { order(:created_at) }
+  scope :comparison_messages, -> { where.not(comparison_group_id: nil) }
+  scope :regular_messages, -> { where(comparison_group_id: nil) }
+  scope :by_comparison_group, ->(group_id) { where(comparison_group_id: group_id) }
   
   # Helper method to get sources ordered by relevance
   def sources_by_relevance
     sources.joins(:message_sources)
            .where(message_sources: { messageable: self })
            .order('message_sources.relevance_score DESC')
+  end
+  
+  # Check if this message is part of a comparison group
+  def comparison_message?
+    comparison_group_id.present?
+  end
+  
+  # Get other messages in the same comparison group
+  def comparison_siblings
+    return Message.none unless comparison_message?
+    Message.by_comparison_group(comparison_group_id).where.not(id: id)
+  end
+  
+  # Get all messages in the comparison group (including self)
+  def comparison_group_messages
+    return Message.where(id: id) unless comparison_message?
+    Message.by_comparison_group(comparison_group_id).order(:created_at)
+  end
+  
+  # Check if this is the first message in a comparison group
+  def first_in_comparison_group?
+    return false unless comparison_message?
+    comparison_group_messages.first == self
   end
 end

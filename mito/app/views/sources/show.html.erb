@@ -1,0 +1,196 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Header -->
+  <div class="bg-white shadow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="py-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <nav class="flex" aria-label="Breadcrumb">
+              <ol class="flex items-center space-x-4">
+                <li>
+                  <%= link_to sources_path, class: "text-gray-500 hover:text-gray-700" do %>
+                    📚 Zdroje
+                  <% end %>
+                </li>
+                <li>
+                  <div class="flex items-center">
+                    <svg class="flex-shrink-0 h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="ml-4 text-sm font-medium text-gray-500">Detail zdroja</span>
+                  </div>
+                </li>
+              </ol>
+            </nav>
+            <h1 class="mt-2 text-3xl font-bold text-gray-900"><%= truncate(@source.title, length: 80) %></h1>
+            <p class="mt-1 text-sm text-gray-500">Podrobné informácie o zdroji a jeho použití</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Source Details -->
+      <div class="lg:col-span-1">
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Informácie o zdroji</h2>
+          
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Názov</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @source.title %></dd>
+            </div>
+            
+            <div>
+              <dt class="text-sm font-medium text-gray-500">URL</dt>
+              <dd class="mt-1 text-sm">
+                <a href="<%= @source.url %>" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline break-all">
+                  <%= @source.url %>
+                </a>
+              </dd>
+            </div>
+            
+            <% if @source.excerpt.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Výňatok</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @source.excerpt %></dd>
+              </div>
+            <% end %>
+            
+            <% if @source.chunk_text.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Text úryvku</dt>
+                <dd class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
+                  <%= truncate(@source.chunk_text, length: 300) %>
+                </dd>
+              </div>
+            <% end %>
+            
+            <% if @source.chunk_size.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Veľkosť úryvku</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @source.chunk_size %> znakov</dd>
+              </div>
+            <% end %>
+            
+            <% if @source.document_id.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">ID dokumentu</dt>
+                <dd class="mt-1 text-sm text-gray-900 font-mono"><%= @source.document_id %></dd>
+              </div>
+            <% end %>
+            
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Vytvorené</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @source.created_at.strftime("%d.%m.%Y %H:%M:%S") %></dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Usage Statistics -->
+        <div class="mt-6 bg-white shadow rounded-lg p-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Štatistiky použitia</h2>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div class="text-center p-3 bg-blue-50 rounded-lg">
+              <div class="text-2xl font-bold text-blue-600"><%= @usage_stats[:total_uses] %></div>
+              <div class="text-xs text-blue-800">Celkom použití</div>
+            </div>
+            <div class="text-center p-3 bg-green-50 rounded-lg">
+              <div class="text-2xl font-bold text-green-600"><%= @usage_stats[:unique_chats] %></div>
+              <div class="text-xs text-green-800">Rôznych chatov</div>
+            </div>
+            <div class="text-center p-3 bg-purple-50 rounded-lg">
+              <div class="text-2xl font-bold text-purple-600"><%= @usage_stats[:unique_users] %></div>
+              <div class="text-xs text-purple-800">Rôznych užívateľov</div>
+            </div>
+            <div class="text-center p-3 bg-yellow-50 rounded-lg">
+              <div class="text-2xl font-bold text-yellow-600"><%= sprintf("%.1f", @usage_stats[:avg_relevance]) %></div>
+              <div class="text-xs text-yellow-800">Priem. relevancia</div>
+            </div>
+          </div>
+          
+          <% if @usage_stats[:variants_used].any? %>
+            <div class="mt-4">
+              <dt class="text-sm font-medium text-gray-500 mb-2">Používané varianty</dt>
+              <div class="flex flex-wrap gap-1">
+                <% @usage_stats[:variants_used].each do |variant| %>
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    <%= variant %>
+                  </span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Usage History -->
+      <div class="lg:col-span-2">
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">História použitia v konverzáciách</h2>
+          </div>
+          
+          <% if @message_sources.any? %>
+            <div class="divide-y divide-gray-200">
+              <% @message_sources.each do |message_source| %>
+                <div class="p-6 hover:bg-gray-50">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <!-- Chat and User Info -->
+                      <div class="flex items-center space-x-2 mb-2">
+                        <%= link_to chat_path(message_source.chat_id), class: "text-blue-600 hover:text-blue-800 font-medium" do %>
+                          💬 <%= message_source.chat_title || "Konverzácia #{message_source.chat_id[0..7]}..." %>
+                        <% end %>
+                        <span class="text-gray-400">•</span>
+                        <span class="text-sm text-gray-500">👤 <%= message_source.user_email %></span>
+                        <% if message_source.variant.present? %>
+                          <span class="text-gray-400">•</span>
+                          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            <%= message_source.variant %>
+                          </span>
+                        <% end %>
+                      </div>
+                      
+                      <!-- Message Content -->
+                      <div class="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
+                        <%= truncate(message_source.message_content, length: 200) %>
+                      </div>
+                      
+                      <!-- Metadata -->
+                      <div class="flex items-center justify-between mt-3">
+                        <div class="flex items-center space-x-4 text-xs text-gray-500">
+                          <span>📅 <%= message_source.message_created_at.strftime("%d.%m.%Y %H:%M") %></span>
+                          <span>🎯 Relevancia: <%= sprintf("%.3f", message_source.relevance_score) %></span>
+                          <% if message_source.comparison_group_id.present? %>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Porovnanie
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <!-- Empty State -->
+            <div class="text-center py-12">
+              <div class="mx-auto h-12 w-12 text-gray-400">
+                💬
+              </div>
+              <h3 class="mt-2 text-sm font-medium text-gray-900">Žiadne použitia</h3>
+              <p class="mt-1 text-sm text-gray-500">Tento zdroj ešte nebol použitý v žiadnej konverzácii.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

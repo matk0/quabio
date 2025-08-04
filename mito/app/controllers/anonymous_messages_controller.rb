@@ -101,7 +101,16 @@ class AnonymousMessagesController < ApplicationController
         content: @assistant_message.content,
         role: @assistant_message.role,
         created_at: @assistant_message.created_at,
-        sources: @sources || []
+        sources: @assistant_message.sources.includes(:message_sources).map do |source|
+          message_source = @assistant_message.message_sources.find { |ms| ms.source_id == source.id }
+          {
+            id: source.id,
+            title: source.title,
+            url: source.url,
+            excerpt: source.excerpt,
+            relevance_score: message_source&.relevance_score || 0.0
+          }
+        end
       }
     end
 

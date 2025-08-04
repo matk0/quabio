@@ -1,40 +1,110 @@
-<div class="flex <%= message.user? ? 'justify-end' : 'justify-start' %>" id="message_<%= message.id %>">
-  <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg <%= message.user? ? 'bg-emerald-500 text-white' : 'bg-white border border-gray-200 text-gray-900' %>">
-    <% unless message.user? %>
-      <div class="flex items-center mb-1">
-        <div class="text-xs font-medium text-emerald-600">🧬 Miťo</div>
-      </div>
-    <% end %>
-    
-    <p class="text-sm whitespace-pre-wrap"><%= message.content %></p>
-    
-    <% unless message.user? %>
-      <% if message.sources.any? %>
-        <div class="mt-3 pt-3 border-t border-gray-100">
-          <p class="text-xs font-medium text-gray-600 mb-2">Zdroje:</p>
-          <div class="space-y-1">
-            <% message.sources_by_relevance.limit(3).each do |source| %>
-              <% message_source = message.message_sources.find { |ms| ms.source_id == source.id } %>
-              <div class="text-xs">
-                • <% if source.url.present? %>
-                    <a href="<%= source.url %>" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">
-                      <%= source.title %>
-                    </a>
-                  <% else %>
-                    <span class="text-gray-500"><%= source.title %></span>
+<% if message.comparison_message? && message.first_in_comparison_group? %>
+  <!-- Render comparison group -->
+  <div class="comparison-container space-y-4 mb-4" id="comparison_<%= message.comparison_group_id %>">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <% message.comparison_group_messages.each do |variant_message| %>
+        <div class="comparison-variant">
+          <!-- Variant Header -->
+          <div class="bg-emerald-50 border border-emerald-200 rounded-t-md px-4 py-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-semibold text-emerald-800">
+                🧬 Miťo - <%= variant_message.variant || 'Unknown' %>
+              </h4>
+              <% if variant_message.processing_time %>
+                <span class="text-xs text-emerald-600">
+                  <%= sprintf("%.2f", variant_message.processing_time) %>s
+                </span>
+              <% end %>
+            </div>
+          </div>
+          
+          <!-- Variant Response -->
+          <div class="bg-white border-l border-r border-b border-emerald-200 rounded-b-md px-4 py-3">
+            <p class="text-sm text-gray-900 whitespace-pre-wrap"><%= variant_message.content %></p>
+            
+            <!-- Sources if available -->
+            <% if variant_message.sources.any? %>
+              <div class="mt-3 pt-3 border-t border-gray-100">
+                <p class="text-xs font-medium text-gray-600 mb-2">Zdroje:</p>
+                <div class="space-y-1">
+                  <% variant_message.sources_by_relevance.limit(3).each do |source| %>
+                    <% message_source = variant_message.message_sources.find { |ms| ms.source_id == source.id } %>
+                    <div class="text-xs">
+                      • <% if source.url.present? %>
+                          <a href="<%= source.url %>" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">
+                            <%= source.title %>
+                          </a>
+                        <% else %>
+                          <span class="text-gray-500"><%= source.title %></span>
+                        <% end %>
+                        <% if current_user&.admin? && message_source %>
+                          <span class="text-gray-400">(<%= sprintf("%.1f", message_source.relevance_score) %>)</span>
+                        <% end %>
+                    </div>
                   <% end %>
-                  <% if current_user&.admin? && message_source %>
-                    <span class="text-gray-400">(<%= sprintf("%.1f", message_source.relevance_score) %>)</span>
-                  <% end %>
+                </div>
               </div>
             <% end %>
+            
+            <div class="text-xs text-gray-500 mt-2">
+              <%= variant_message.created_at.strftime("%H:%M") %>
+            </div>
           </div>
         </div>
       <% end %>
-    <% end %>
+    </div>
     
-    <div class="text-xs <%= message.user? ? 'text-emerald-100' : 'text-gray-500' %> mt-1">
-      <%= message.created_at.strftime("%H:%M") %>
+    <!-- Performance Comparison Summary -->
+    <div class="bg-gray-50 border border-gray-200 rounded-md p-3">
+      <div class="text-xs text-gray-600">
+        <strong>Porovnanie výkonu:</strong>
+        <% message.comparison_group_messages.each_with_index do |variant_message, index| %>
+          <%= variant_message.variant || 'Unknown' %>: <%= sprintf("%.2f", variant_message.processing_time || 0.0) %>s<%= index < message.comparison_group_messages.length - 1 ? ' | ' : '' %>
+        <% end %>
+      </div>
     </div>
   </div>
-</div>
+<% elsif !message.comparison_message? %>
+  <!-- Render regular message -->
+  <div class="flex <%= message.user? ? 'justify-end' : 'justify-start' %>" id="message_<%= message.id %>">
+    <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg <%= message.user? ? 'bg-emerald-500 text-white' : 'bg-white border border-gray-200 text-gray-900' %>">
+      <% unless message.user? %>
+        <div class="flex items-center mb-1">
+          <div class="text-xs font-medium text-emerald-600">🧬 Miťo</div>
+        </div>
+      <% end %>
+      
+      <p class="text-sm whitespace-pre-wrap"><%= message.content %></p>
+      
+      <% unless message.user? %>
+        <% if message.sources.any? %>
+          <div class="mt-3 pt-3 border-t border-gray-100">
+            <p class="text-xs font-medium text-gray-600 mb-2">Zdroje:</p>
+            <div class="space-y-1">
+              <% message.sources_by_relevance.limit(3).each do |source| %>
+                <% message_source = message.message_sources.find { |ms| ms.source_id == source.id } %>
+                <div class="text-xs">
+                  • <% if source.url.present? %>
+                      <a href="<%= source.url %>" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">
+                        <%= source.title %>
+                      </a>
+                    <% else %>
+                      <span class="text-gray-500"><%= source.title %></span>
+                    <% end %>
+                    <% if current_user&.admin? && message_source %>
+                      <span class="text-gray-400">(<%= sprintf("%.1f", message_source.relevance_score) %>)</span>
+                    <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+      
+      <div class="text-xs <%= message.user? ? 'text-emerald-100' : 'text-gray-500' %> mt-1">
+        <%= message.created_at.strftime("%H:%M") %>
+      </div>
+    </div>
+  </div>
+<% end %>
+<!-- Skip rendering if this is a comparison message but not the first in group -->

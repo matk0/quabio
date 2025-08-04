@@ -1,0 +1,111 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Header -->
+  <div class="bg-white shadow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="py-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">📚 Správa zdrojov</h1>
+            <p class="mt-1 text-sm text-gray-500">Prehľad a analýza zdrojov používaných v konverzáciách</p>
+          </div>
+          
+          <!-- Statistics Cards -->
+          <div class="grid grid-cols-3 gap-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-blue-600"><%= @total_sources %></div>
+              <div class="text-xs text-blue-800">Celkom zdrojov</div>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-green-600"><%= @total_usage %></div>
+              <div class="text-xs text-green-800">Celkové použitia</div>
+            </div>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-purple-600">
+                <%= @most_used_source ? @most_used_source.message_sources.count : 0 %>
+              </div>
+              <div class="text-xs text-purple-800">Najpoužívanejší</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <% if @sources.any? %>
+      <!-- Sources Table -->
+      <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-medium text-gray-900">Zoznam zdrojov</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Zdroj
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Použitia
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Vytvorené
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Akcie
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <% @sources.each do |source| %>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">
+                      <%= truncate(source.title, length: 60) %>
+                    </div>
+                    <% if source.excerpt.present? %>
+                      <div class="text-sm text-gray-500">
+                        <%= truncate(source.excerpt, length: 80) %>
+                      </div>
+                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                 <%= source.usage_count.to_i > 5 ? 'bg-green-100 text-green-800' : 
+                                     source.usage_count.to_i > 2 ? 'bg-yellow-100 text-yellow-800' : 
+                                     'bg-gray-100 text-gray-800' %>">
+                      <%= source.usage_count %> krát
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <%= source.created_at.strftime("%d.%m.%Y %H:%M") %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <%= link_to "Detail", source_path(source), 
+                        class: "text-blue-600 hover:text-blue-900 font-medium" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Showing first 50 sources, ordered by usage -->
+        <div class="px-6 py-4 border-t border-gray-200 text-sm text-gray-500">
+          Zobrazuje sa prvých 50 zdrojov zoradených podľa použitia
+        </div>
+      </div>
+    <% else %>
+      <!-- Empty State -->
+      <div class="text-center py-12">
+        <div class="mx-auto h-12 w-12 text-gray-400">
+          📚
+        </div>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Žiadne zdroje</h3>
+        <p class="mt-1 text-sm text-gray-500">Zatiaľ neboli použité žiadne zdroje v konverzáciách.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

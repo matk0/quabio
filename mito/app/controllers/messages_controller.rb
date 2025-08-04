@@ -12,8 +12,23 @@ class MessagesController < ApplicationController
       assistant_response = get_assistant_response(@message.content)
       
       if assistant_response == :comparison
-        # For admin users with comparison data - don't create assistant messages
-        # The comparison data is stored in @comparison_data for the view
+        # For admin users with comparison data - create separate messages for each variant
+        comparison_group_id = SecureRandom.uuid
+        @comparison_messages = []
+        
+        @comparison_data['responses'].each do |variant_response|
+          message = @chat.messages.create!(
+            content: variant_response['response'],
+            role: 'assistant',
+            variant: variant_response['variant_name'],
+            comparison_group_id: comparison_group_id,
+            processing_time: variant_response['processing_time']
+          )
+          
+          # Persist sources for each variant
+          persist_sources_for_variant(message, variant_response['sources']) if variant_response['sources'].present?
+          @comparison_messages << message
+        end
       elsif assistant_response
         # For regular users - create single assistant message
         @assistant_message = @chat.messages.create!(
@@ -111,13 +126,46 @@ class MessagesController < ApplicationController
 
     if @comparison_data
       response_data[:comparison_data] = @comparison_data
+      # Also include the persisted comparison messages for future reference
+      if @comparison_messages
+        response_data[:comparison_messages] = @comparison_messages.map do |msg|
+          {
+            id: msg.id,
+            content: msg.content,
+            role: msg.role,
+            variant: msg.variant,
+            comparison_group_id: msg.comparison_group_id,
+            processing_time: msg.processing_time,
+            created_at: msg.created_at,
+            sources: msg.sources.map do |source|
+              message_source = msg.message_sources.find { |ms| ms.source_id == source.id }
+              {
+                id: source.id,
+                title: source.title,
+                url: source.url,
+                excerpt: source.excerpt,
+                relevance_score: message_source&.relevance_score || 0.0
+              }
+            end
+          }
+        end
+      end
     elsif @assistant_message
       response_data[:assistant_message] = {
         id: @assistant_message.id,
         content: @assistant_message.content,
         role: @assistant_message.role,
         created_at: @assistant_message.created_at,
-        sources: @sources || []
+        sources: @assistant_message.sources.includes(:message_sources).map do |source|
+          message_source = @assistant_message.message_sources.find { |ms| ms.source_id == source.id }
+          {
+            id: source.id,
+            title: source.title,
+            url: source.url,
+            excerpt: source.excerpt,
+            relevance_score: message_source&.relevance_score || 0.0
+          }
+        end
       }
     end
 
@@ -152,6 +200,33 @@ class MessagesController < ApplicationController
       )
     rescue => e
       Rails.logger.error "Error persisting source: #{e.message}"
+      # Continue processing other sources even if one fails
+    end
+  end
+  
+  def persist_sources_for_variant(message, sources_array)
+    return unless sources_array.is_a?(Array)
+    
+    sources_array.each do |source_data|
+      next unless source_data.is_a?(Hash) && source_data['url'].present?
+      
+      # Find or create source by URL to avoid duplicates
+      source = Source.find_or_create_by(url: source_data['url']) do |s|
+        s.title = source_data['title'] || 'Untitled'
+        s.excerpt = source_data['excerpt']
+        s.chunk_text = source_data['chunk_text']
+        s.chunk_size = source_data['chunk_size']
+        s.document_id = source_data['document_id']
+        s.metadata = source_data['metadata']
+      end
+      
+      # Create the association with relevance score
+      message.message_sources.create!(
+        source: source,
+        relevance_score: source_data['relevance_score'] || 0.0
+      )
+    rescue => e
+      Rails.logger.error "Error persisting variant source: #{e.message}"
       # Continue processing other sources even if one fails
     end
   end
