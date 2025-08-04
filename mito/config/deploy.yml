@@ -29,8 +29,8 @@ env:
   clear:
     SOLID_QUEUE_IN_PUMA: true
     DB_HOST: DB_HOST
-    # FastAPI external URL - will be set to remote server
-    FASTAPI_URL: 'https://api.knowledgebase.studio'
+    # FastAPI external URL - points to our backend server
+    FASTAPI_URL: 'http://209.38.249.130:8000'
     RAILS_LOG_LEVEL: info
 
 # Aliases
