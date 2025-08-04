@@ -46,7 +46,7 @@
                   <li>
                     <%= link_to chats_path, 
                         class: "text-gray-500 transition hover:text-gray-500/75" do %>
-                      Všetky konverzácie
+                      Konverzácie
                     <% end %>
                   </li>
                 </ul>
@@ -108,6 +108,9 @@
 
                     <% if current_user.admin? %>
                       <div class="p-2">
+                        <%= link_to admin_dashboard_path, class: "flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" do %>
+                          📊 Admin Dashboard
+                        <% end %>
                         <%= link_to sources_path, class: "flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" do %>
                           📚 Správa zdrojov
                         <% end %>

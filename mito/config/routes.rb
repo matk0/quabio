@@ -14,5 +14,11 @@ Rails.application.routes.draw do
   # Admin-only sources management
   resources :sources, only: [:index, :show]
   
+  # Admin dashboard
+  namespace :admin do
+    get 'dashboard', to: 'dashboard#index'
+    root 'dashboard#index'
+  end
+  
   get "up" => "rails/health#show", as: :rails_health_check
 end

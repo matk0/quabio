@@ -17,27 +17,65 @@ class MessagesController < ApplicationController
         @comparison_messages = []
         
         @comparison_data['responses'].each do |variant_response|
-          message = @chat.messages.create!(
+          # Build message attributes with cost data
+          message_attributes = {
             content: variant_response['response'],
             role: 'assistant',
             variant: variant_response['variant_name'],
             comparison_group_id: comparison_group_id,
             processing_time: variant_response['processing_time']
-          )
+          }
           
-          # Persist sources for each variant
+          # Add cost and token usage data if available
+          if variant_response['usage'].present?
+            usage_data = variant_response['usage']
+            # Calculate cost using Rails ModelPricing
+            pricing = ModelPricing.current_pricing_for(usage_data['model'])
+            cost_usd = pricing&.calculate_cost(usage_data['prompt_tokens'], usage_data['completion_tokens'])
+            
+            message_attributes[:total_cost_usd] = cost_usd
+            message_attributes[:token_usage] = {
+              'model' => usage_data['model'],
+              'prompt_tokens' => usage_data['prompt_tokens'],
+              'completion_tokens' => usage_data['completion_tokens'],
+              'total_tokens' => usage_data['total_tokens']
+            }
+          end
+          
+          message = @chat.messages.create!(message_attributes)
+          
+          # Persist sources and usage data for each variant
           persist_sources_for_variant(message, variant_response['sources']) if variant_response['sources'].present?
+          persist_usage_data(message, variant_response['usage']) if variant_response['usage'].present?
           @comparison_messages << message
         end
       elsif assistant_response
-        # For regular users - create single assistant message
-        @assistant_message = @chat.messages.create!(
+        # For regular users - create single assistant message with cost data
+        message_attributes = {
           content: assistant_response,
           role: 'assistant'
-        )
+        }
         
-        # Persist sources for the assistant message
+        # Add cost and token usage data if available
+        if @usage_data.present?
+          # Calculate cost using Rails ModelPricing
+          pricing = ModelPricing.current_pricing_for(@usage_data['model'])
+          cost_usd = pricing&.calculate_cost(@usage_data['prompt_tokens'], @usage_data['completion_tokens'])
+          
+          message_attributes[:total_cost_usd] = cost_usd
+          message_attributes[:token_usage] = {
+            'model' => @usage_data['model'],
+            'prompt_tokens' => @usage_data['prompt_tokens'],
+            'completion_tokens' => @usage_data['completion_tokens'],
+            'total_tokens' => @usage_data['total_tokens']
+          }
+        end
+        
+        @assistant_message = @chat.messages.create!(message_attributes)
+        
+        # Persist sources and usage data for the assistant message
         persist_sources_for_message(@assistant_message) if @sources.present?
+        persist_usage_data(@assistant_message, @usage_data) if @usage_data.present?
       end
 
       respond_to do |format|
@@ -71,8 +109,8 @@ class MessagesController < ApplicationController
   def get_assistant_response(user_message)
     begin
       if current_user.admin?
-        # Admin users get comparison responses
-        response = HTTP.timeout(30).post(
+        # Admin users get comparison responses (longer timeout for dual processing)
+        response = HTTP.timeout(60).post(
           'http://localhost:8000/api/chat/compare',
           json: {
             message: user_message,
@@ -100,8 +138,10 @@ class MessagesController < ApplicationController
         if response.status.success?
           response_data = JSON.parse(response.body)
           @sources = response_data['sources'] || []
+          @usage_data = response_data['usage']
           response_data['response']
         else
+          Rails.logger.error "FastAPI Single Error: #{response.status} - #{response.body}"
           @sources = []
           'Prepáčte, nastala chyba pri spracovaní vašej otázky. Skúste to znovu.'
         end
@@ -180,7 +220,10 @@ class MessagesController < ApplicationController
   def persist_sources_for_message(message)
     return unless @sources.is_a?(Array)
     
-    @sources.each do |source_data|
+    # Deduplicate sources by URL before processing
+    unique_sources = @sources.uniq { |source| source['url'] }
+    
+    unique_sources.each do |source_data|
       next unless source_data.is_a?(Hash) && source_data['url'].present?
       
       # Find or create source by URL to avoid duplicates
@@ -193,11 +236,13 @@ class MessagesController < ApplicationController
         s.metadata = source_data['metadata']
       end
       
-      # Create the association with relevance score
-      message.message_sources.create!(
-        source: source,
-        relevance_score: source_data['relevance_score'] || 0.0
-      )
+      # Create the association with relevance score (avoid duplicates)
+      unless message.message_sources.exists?(source: source)
+        message.message_sources.create!(
+          source: source,
+          relevance_score: source_data['relevance_score'] || 0.0
+        )
+      end
     rescue => e
       Rails.logger.error "Error persisting source: #{e.message}"
       # Continue processing other sources even if one fails
@@ -207,7 +252,10 @@ class MessagesController < ApplicationController
   def persist_sources_for_variant(message, sources_array)
     return unless sources_array.is_a?(Array)
     
-    sources_array.each do |source_data|
+    # Deduplicate sources by URL before processing
+    unique_sources = sources_array.uniq { |source| source['url'] }
+    
+    unique_sources.each do |source_data|
       next unless source_data.is_a?(Hash) && source_data['url'].present?
       
       # Find or create source by URL to avoid duplicates
@@ -220,14 +268,39 @@ class MessagesController < ApplicationController
         s.metadata = source_data['metadata']
       end
       
-      # Create the association with relevance score
-      message.message_sources.create!(
-        source: source,
-        relevance_score: source_data['relevance_score'] || 0.0
-      )
+      # Create the association with relevance score (avoid duplicates)
+      unless message.message_sources.exists?(source: source)
+        message.message_sources.create!(
+          source: source,
+          relevance_score: source_data['relevance_score'] || 0.0
+        )
+      end
     rescue => e
       Rails.logger.error "Error persisting variant source: #{e.message}"
       # Continue processing other sources even if one fails
+    end
+  end
+  
+  def persist_usage_data(message, usage_data)
+    return unless usage_data.is_a?(Hash) && usage_data['total_tokens'].to_i > 0
+    
+    begin
+      # Calculate cost using Rails ModelPricing
+      pricing = ModelPricing.current_pricing_for(usage_data['model'])
+      cost_usd = pricing&.calculate_cost(usage_data['prompt_tokens'], usage_data['completion_tokens']) || 0.0
+      
+      # Create API usage record for detailed tracking
+      message.api_usages.create!(
+        model: usage_data['model'] || 'unknown',
+        prompt_tokens: usage_data['prompt_tokens'] || 0,
+        completion_tokens: usage_data['completion_tokens'] || 0,
+        total_tokens: usage_data['total_tokens'] || 0,
+        cost_usd: cost_usd,
+        request_timestamp: Time.current,
+        response_time_ms: usage_data['response_time_ms']
+      )
+    rescue => e
+      Rails.logger.error "Error persisting usage data: #{e.message}"
     end
   end
 end

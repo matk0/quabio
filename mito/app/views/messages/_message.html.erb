@@ -48,6 +48,11 @@
             
             <div class="text-xs text-gray-500 mt-2">
               <%= variant_message.created_at.strftime("%H:%M") %>
+              <% if current_user&.admin? && variant_message.has_cost_data? %>
+                <span class="ml-2 text-green-600">
+                  💰 <%= variant_message.formatted_cost %> (<%= variant_message.token_count %> tokens)
+                </span>
+              <% end %>
             </div>
           </div>
         </div>
@@ -62,6 +67,14 @@
           <%= variant_message.variant || 'Unknown' %>: <%= sprintf("%.2f", variant_message.processing_time || 0.0) %>s<%= index < message.comparison_group_messages.length - 1 ? ' | ' : '' %>
         <% end %>
       </div>
+      <% if current_user&.admin? %>
+        <div class="text-xs text-gray-600 mt-1">
+          <strong>Náklady:</strong>
+          <% message.comparison_group_messages.each_with_index do |variant_message, index| %>
+            <%= variant_message.variant || 'Unknown' %>: <%= variant_message.has_cost_data? ? variant_message.formatted_cost : 'N/A' %><%= index < message.comparison_group_messages.length - 1 ? ' | ' : '' %>
+          <% end %>
+        </div>
+      <% end %>
     </div>
   </div>
 <% elsif !message.comparison_message? %>
@@ -103,6 +116,11 @@
       
       <div class="text-xs <%= message.user? ? 'text-emerald-100' : 'text-gray-500' %> mt-1">
         <%= message.created_at.strftime("%H:%M") %>
+        <% if current_user&.admin? && !message.user? && message.has_cost_data? %>
+          <span class="ml-2 text-green-600">
+            💰 <%= message.formatted_cost %> (<%= message.token_count %> tokens)
+          </span>
+        <% end %>
       </div>
     </div>
   </div>

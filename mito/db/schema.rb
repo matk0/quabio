@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_03_141750) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_04_070617) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -29,6 +29,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_141750) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["anonymous_chat_id"], name: "index_anonymous_messages_on_anonymous_chat_id"
+  end
+
+  create_table "api_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "message_id", null: false
+    t.string "model", limit: 50, null: false
+    t.integer "prompt_tokens", null: false
+    t.integer "completion_tokens", null: false
+    t.integer "total_tokens", null: false
+    t.decimal "cost_usd", precision: 10, scale: 6, null: false
+    t.datetime "request_timestamp", precision: nil, null: false
+    t.integer "response_time_ms"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cost_usd"], name: "index_api_usages_on_cost_usd"
+    t.index ["message_id"], name: "index_api_usages_on_message_id"
+    t.index ["model"], name: "index_api_usages_on_model"
+    t.index ["request_timestamp"], name: "index_api_usages_on_request_timestamp"
   end
 
   create_table "chats", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -62,9 +79,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_141750) do
     t.string "variant"
     t.uuid "comparison_group_id"
     t.float "processing_time"
+    t.decimal "total_cost_usd", precision: 10, scale: 6
+    t.jsonb "token_usage"
     t.index ["chat_id"], name: "index_messages_on_chat_id"
     t.index ["comparison_group_id"], name: "index_messages_on_comparison_group_id"
+    t.index ["token_usage"], name: "index_messages_on_token_usage", using: :gin
+    t.index ["total_cost_usd"], name: "index_messages_on_total_cost_usd"
     t.index ["variant"], name: "index_messages_on_variant"
+  end
+
+  create_table "model_pricings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "model", limit: 50, null: false
+    t.decimal "input_cost_per_1k_tokens", precision: 10, scale: 6, null: false
+    t.decimal "output_cost_per_1k_tokens", precision: 10, scale: 6, null: false
+    t.date "effective_date", null: false
+    t.boolean "is_active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["effective_date"], name: "index_model_pricings_on_effective_date"
+    t.index ["is_active"], name: "index_model_pricings_on_is_active"
+    t.index ["model", "is_active"], name: "index_model_pricings_on_model_and_is_active", unique: true, where: "(is_active = true)"
+    t.index ["model"], name: "index_model_pricings_on_model"
   end
 
   create_table "sources", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -96,6 +131,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_141750) do
   end
 
   add_foreign_key "anonymous_messages", "anonymous_chats"
+  add_foreign_key "api_usages", "messages"
   add_foreign_key "chats", "users"
   add_foreign_key "message_sources", "sources"
   add_foreign_key "messages", "chats"

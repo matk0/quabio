@@ -1,151 +1,165 @@
-import { Controller } from "@hotwired/stimulus"
+import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
   static targets = [
-    "messagesContainer", 
-    "form", 
-    "textarea", 
-    "submitButton", 
-    "loadingIndicator"
-  ]
-  
+    'messagesContainer',
+    'form',
+    'textarea',
+    'submitButton',
+    'loadingIndicator',
+  ];
+
   static values = {
     chatId: String,
     isAnonymous: Boolean,
     currentUserEmail: String,
-    isAdmin: Boolean
-  }
+    isAdmin: Boolean,
+  };
 
   connect() {
-    console.log("Chat controller connected", {
+    console.log('Chat controller connected', {
       chatId: this.chatIdValue,
       isAnonymous: this.isAnonymousValue,
-      isAdmin: this.isAdminValue
-    })
-    this.scrollToBottom()
-    this.setupKeyboardShortcuts()
+      isAdmin: this.isAdminValue,
+    });
+    this.scrollToBottom();
+    this.setupKeyboardShortcuts();
   }
 
   setupKeyboardShortcuts() {
     if (this.hasTextareaTarget) {
-      this.textareaTarget.addEventListener('keydown', this.handleKeydown.bind(this))
+      this.textareaTarget.addEventListener(
+        'keydown',
+        this.handleKeydown.bind(this),
+      );
     }
   }
 
   handleKeydown(event) {
     // Enter to submit (without Shift), Shift+Enter for new line
     if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      this.submitMessage()
+      event.preventDefault();
+      this.submitMessage();
     }
   }
 
   async submitMessage(event) {
-    if (event) event.preventDefault()
-    
-    const content = this.textareaTarget.value.trim()
-    if (!content) return
+    if (event) event.preventDefault();
+
+    const content = this.textareaTarget.value.trim();
+    if (!content) return;
 
     // Add user message to UI immediately (optimistic update)
-    this.addUserMessageToUI(content)
-    
+    this.addUserMessageToUI(content);
+
     // Show loading state after user message
-    this.showLoadingState()
-    
+    this.showLoadingState();
+
     // Clear the form immediately for better UX
-    this.textareaTarget.value = ''
-    this.scrollToBottom()
+    this.textareaTarget.value = '';
+    this.scrollToBottom();
 
     try {
       // Submit message via AJAX
-      const response = await this.sendMessageToServer(content)
-      
+      const response = await this.sendMessageToServer(content);
+
       if (response.ok) {
-        const data = await response.json()
-        
+        const data = await response.json();
+
         // Add assistant response(s) to UI
         if (data.comparison_data) {
           // Admin comparison view
-          this.addComparisonMessageToUI(data.comparison_data)
+          this.addComparisonMessageToUI(data.comparison_data);
         } else if (data.assistant_message) {
           // Regular assistant response
-          this.addAssistantMessageToUI(data.assistant_message)
+          this.addAssistantMessageToUI(data.assistant_message);
         }
-        
+
         // Show signup invitation if needed
         if (data.show_signup_invitation) {
-          this.addSignupInvitationToUI()
+          this.addSignupInvitationToUI();
         }
-        
+
         // Update chat title in sidebar if it's a new chat
         if (data.chat_title) {
-          this.updateChatTitle(data.chat_title)
+          this.updateChatTitle(data.chat_title);
         }
-        
       } else {
         // Handle server errors
-        this.addErrorMessageToUI("Nastala chyba pri odosielaní správy. Skúste to znovu.")
+        this.addErrorMessageToUI(
+          'Nastala chyba pri odosielaní správy. Skúste to znovu.',
+        );
       }
     } catch (error) {
-      console.error("Error sending message:", error)
-      this.addErrorMessageToUI("Chyba siete. Skontrolujte pripojenie a skúste to znovu.")
-      
+      console.error('Error sending message:', error);
+      this.addErrorMessageToUI(
+        'Chyba siete. Skontrolujte pripojenie a skúste to znovu.',
+      );
+
       // Re-add the user's message back to the textarea so they can retry
-      this.textareaTarget.value = content
+      this.textareaTarget.value = content;
     } finally {
-      this.hideLoadingState()
-      this.scrollToBottom()
+      this.hideLoadingState();
+      this.scrollToBottom();
     }
   }
 
   async sendMessageToServer(content) {
-    const url = this.isAnonymousValue ? '/anonymous_messages' : `/chats/${this.chatIdValue}/messages`
-    const csrfToken = document.querySelector('[name="csrf-token"]').content
-    
-    const body = this.isAnonymousValue 
+    const url = this.isAnonymousValue
+      ? '/anonymous_messages'
+      : `/chats/${this.chatIdValue}/messages`;
+    const csrfToken = document.querySelector('[name="csrf-token"]').content;
+
+    const body = this.isAnonymousValue
       ? { anonymous_message: { content: content } }
-      : { message: { content: content } }
+      : { message: { content: content } };
 
     return fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfToken,
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
-      body: JSON.stringify(body)
-    })
+      body: JSON.stringify(body),
+    });
   }
 
   addUserMessageToUI(content) {
-    const messageHtml = this.createUserMessageHTML(content)
-    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml)
+    const messageHtml = this.createUserMessageHTML(content);
+    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml);
   }
 
   addAssistantMessageToUI(messageData) {
-    const messageHtml = this.createAssistantMessageHTML(messageData.content, messageData.sources || [])
-    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml)
+    const messageHtml = this.createAssistantMessageHTML(
+      messageData.content,
+      messageData.sources || [],
+    );
+    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml);
   }
 
   addComparisonMessageToUI(comparisonData) {
-    const messageHtml = this.createComparisonMessageHTML(comparisonData)
-    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml)
+    const messageHtml = this.createComparisonMessageHTML(comparisonData);
+    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml);
   }
 
   addErrorMessageToUI(errorMessage) {
-    const messageHtml = this.createErrorMessageHTML(errorMessage)
-    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml)
+    const messageHtml = this.createErrorMessageHTML(errorMessage);
+    this.messagesContainerTarget.insertAdjacentHTML('beforeend', messageHtml);
   }
 
   addSignupInvitationToUI() {
     if (this.isAnonymousValue) {
-      const invitationHtml = this.createSignupInvitationHTML()
-      this.messagesContainerTarget.insertAdjacentHTML('beforeend', invitationHtml)
+      const invitationHtml = this.createSignupInvitationHTML();
+      this.messagesContainerTarget.insertAdjacentHTML(
+        'beforeend',
+        invitationHtml,
+      );
     }
   }
 
   createUserMessageHTML(content) {
-    const timestamp = this.formatTimestamp(new Date())
+    const timestamp = this.formatTimestamp(new Date());
     return `
       <div class="flex justify-end">
         <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-emerald-600 text-white">
@@ -153,26 +167,34 @@ export default class extends Controller {
           <p class="text-xs text-emerald-100 mt-1">${timestamp}</p>
         </div>
       </div>
-    `
+    `;
   }
 
   createAssistantMessageHTML(content, sources = []) {
-    const timestamp = this.formatTimestamp(new Date())
-    
+    const timestamp = this.formatTimestamp(new Date());
+
     // Create sources HTML if sources exist
-    const sourcesHtml = sources && sources.length > 0 ? `
+    const sourcesHtml =
+      sources && sources.length > 0
+        ? `
       <div class="mt-3 pt-3 border-t border-gray-100">
         <p class="text-xs font-medium text-gray-600 mb-2">Zdroje:</p>
         <div class="space-y-1">
-          ${sources.slice(0, 3).map(source => `
+          ${sources
+            .slice(0, 3)
+            .map(
+              (source) => `
             <div class="text-xs">
               • ${source.url ? `<a href="${this.escapeHtml(source.url)}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">${this.escapeHtml(source.title)}</a>` : `<span class="text-gray-500">${this.escapeHtml(source.title)}</span>`}${this.isAdminValue ? ` <span class="text-gray-400">(${source.relevance_score ? source.relevance_score.toFixed(1) : '0.0'})</span>` : ''}
             </div>
-          `).join('')}
+          `,
+            )
+            .join('')}
         </div>
       </div>
-    ` : ''
-    
+    `
+        : '';
+
     return `
       <div class="flex justify-start">
         <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-900">
@@ -185,15 +207,17 @@ export default class extends Controller {
           <p class="text-xs text-gray-500 mt-1">${timestamp}</p>
         </div>
       </div>
-    `
+    `;
   }
 
   createComparisonMessageHTML(comparisonData) {
-    const timestamp = this.formatTimestamp(new Date())
+    const timestamp = this.formatTimestamp(new Date());
     return `
       <div class="comparison-container mb-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          ${comparisonData.responses.map(response => `
+          ${comparisonData.responses
+            .map(
+              (response) => `
             <div class="comparison-variant border border-gray-200 rounded-lg p-4">
               <div class="bg-emerald-50 px-3 py-2 rounded-t-lg border-b border-emerald-200">
                 <div class="flex items-center">
@@ -203,29 +227,40 @@ export default class extends Controller {
               </div>
               <div class="p-3">
                 <div class="text-sm text-gray-800">${this.formatAssistantContent(response.response)}</div>
-                ${response.sources && response.sources.length > 0 ? `
+                ${
+                  response.sources && response.sources.length > 0
+                    ? `
                   <div class="mt-3 pt-3 border-t border-gray-100">
                     <p class="text-xs font-medium text-gray-600 mb-2">Zdroje:</p>
                     <div class="space-y-1">
-                      ${response.sources.slice(0, 3).map(source => `
+                      ${response.sources
+                        .slice(0, 3)
+                        .map(
+                          (source) => `
                         <div class="text-xs">
                           • ${source.url ? `<a href="${this.escapeHtml(source.url)}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">${this.escapeHtml(source.title)}</a>` : `<span class="text-gray-500">${this.escapeHtml(source.title)}</span>`}${this.isAdminValue ? ` <span class="text-gray-400">(${source.relevance_score ? source.relevance_score.toFixed(1) : '0.0'})</span>` : ''}
                         </div>
-                      `).join('')}
+                      `,
+                        )
+                        .join('')}
                     </div>
                   </div>
-                ` : ''}
+                `
+                    : ''
+                }
                 <p class="text-xs text-gray-500 mt-2">${timestamp}</p>
               </div>
             </div>
-          `).join('')}
+          `,
+            )
+            .join('')}
         </div>
       </div>
-    `
+    `;
   }
 
   createErrorMessageHTML(errorMessage) {
-    const timestamp = this.formatTimestamp(new Date())
+    const timestamp = this.formatTimestamp(new Date());
     return `
       <div class="flex justify-center">
         <div class="max-w-md px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-red-800">
@@ -237,7 +272,7 @@ export default class extends Controller {
           <p class="text-xs text-red-600 mt-1">${timestamp}</p>
         </div>
       </div>
-    `
+    `;
   }
 
   createSignupInvitationHTML() {
@@ -264,32 +299,33 @@ export default class extends Controller {
           </div>
         </div>
       </div>
-    `
+    `;
   }
 
   showLoadingState() {
-    this.submitButtonTarget.disabled = true
+    this.submitButtonTarget.disabled = true;
     this.submitButtonTarget.innerHTML = `
       <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      Odosielam...
-    `
-    
+      Premýšľam...
+    `;
+
     // Add loading indicator to messages
-    const loadingHtml = this.createLoadingIndicatorHTML()
-    this.messagesContainerTarget.insertAdjacentHTML('beforeend', loadingHtml)
+    const loadingHtml = this.createLoadingIndicatorHTML();
+    this.messagesContainerTarget.insertAdjacentHTML('beforeend', loadingHtml);
   }
 
   hideLoadingState() {
-    this.submitButtonTarget.disabled = false
-    this.submitButtonTarget.innerHTML = 'Odoslať'
-    
+    this.submitButtonTarget.disabled = false;
+    this.submitButtonTarget.innerHTML = 'Odoslať';
+
     // Remove loading indicator
-    const loadingIndicator = this.messagesContainerTarget.querySelector('.loading-indicator')
+    const loadingIndicator =
+      this.messagesContainerTarget.querySelector('.loading-indicator');
     if (loadingIndicator) {
-      loadingIndicator.remove()
+      loadingIndicator.remove();
     }
   }
 
@@ -311,44 +347,49 @@ export default class extends Controller {
           </div>
         </div>
       </div>
-    `
+    `;
   }
 
   scrollToBottom() {
     if (this.hasMessagesContainerTarget) {
-      this.messagesContainerTarget.scrollTop = this.messagesContainerTarget.scrollHeight
+      this.messagesContainerTarget.scrollTop =
+        this.messagesContainerTarget.scrollHeight;
     }
   }
 
   updateChatTitle(newTitle) {
     // Update sidebar chat title if it exists
-    const currentChatLink = document.querySelector('.bg-emerald-50.border-r-2.border-emerald-500')
+    const currentChatLink = document.querySelector(
+      '.bg-emerald-50.border-r-2.border-emerald-500',
+    );
     if (currentChatLink) {
-      const titleElement = currentChatLink.querySelector('.text-sm.font-medium')
+      const titleElement = currentChatLink.querySelector(
+        '.text-sm.font-medium',
+      );
       if (titleElement) {
-        titleElement.textContent = newTitle
+        titleElement.textContent = newTitle;
       }
     }
   }
 
   formatTimestamp(date) {
-    return date.toLocaleTimeString('sk-SK', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
+    return date.toLocaleTimeString('sk-SK', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   formatAssistantContent(content) {
     // Basic markdown-like formatting with error handling
     if (!content || typeof content !== 'string') {
-      console.warn('formatAssistantContent received invalid content:', content)
-      return content || ''
+      console.warn('formatAssistantContent received invalid content:', content);
+      return content || '';
     }
-    
+
     return content
       .replace(/\n/g, '<br>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
   }
 
   escapeHtml(text) {
@@ -357,8 +398,8 @@ export default class extends Controller {
       '<': '&lt;',
       '>': '&gt;',
       '"': '&quot;',
-      "'": '&#039;'
-    }
-    return text.replace(/[&<>"']/g, m => map[m])
+      "'": '&#039;',
+    };
+    return text.replace(/[&<>"']/g, (m) => map[m]);
   }
 }

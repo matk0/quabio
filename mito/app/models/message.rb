@@ -2,6 +2,7 @@ class Message < ApplicationRecord
   belongs_to :chat
   has_many :message_sources, as: :messageable, dependent: :destroy
   has_many :sources, through: :message_sources
+  has_many :api_usages, dependent: :destroy
 
   enum :role, { user: 'user', assistant: 'assistant' }
 
@@ -15,7 +16,7 @@ class Message < ApplicationRecord
   
   # Helper method to get sources ordered by relevance
   def sources_by_relevance
-    sources.joins(:message_sources)
+    sources.includes(:message_sources)
            .where(message_sources: { messageable: self })
            .order('message_sources.relevance_score DESC')
   end
@@ -41,5 +42,35 @@ class Message < ApplicationRecord
   def first_in_comparison_group?
     return false unless comparison_message?
     comparison_group_messages.first == self
+  end
+  
+  # Cost tracking methods
+  def has_cost_data?
+    total_cost_usd.present? || token_usage.present?
+  end
+  
+  def formatted_cost
+    return "N/A" unless total_cost_usd
+    "$#{sprintf('%.4f', total_cost_usd)}"
+  end
+  
+  def token_count
+    return 0 unless token_usage
+    token_usage['total_tokens'] || 0
+  end
+  
+  def prompt_tokens
+    return 0 unless token_usage
+    token_usage['prompt_tokens'] || 0
+  end
+  
+  def completion_tokens
+    return 0 unless token_usage
+    token_usage['completion_tokens'] || 0
+  end
+  
+  def model_used
+    return 'Unknown' unless token_usage
+    token_usage['model'] || 'Unknown'
   end
 end
