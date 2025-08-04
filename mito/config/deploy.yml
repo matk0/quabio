@@ -31,7 +31,7 @@ env:
     SOLID_QUEUE_IN_PUMA: true
     DB_HOST: DB_HOST
     # FastAPI internal URL
-    FASTAPI_URL: "http://mito-fastapi:8000"
+    FASTAPI_URL: 'http://mito-fastapi:8000'
     RAILS_LOG_LEVEL: info
 
 # Aliases
@@ -69,14 +69,12 @@ accessories:
     image: matk0/mito-fastapi
     host: 165.232.68.195
     # Only expose internally, not to the public
-    port: "127.0.0.1:8000:8000"
+    port: '127.0.0.1:8000:8000'
     env:
       clear:
         PYTHONUNBUFFERED: 1
       secret:
         - OPENAI_API_KEY
     volumes:
-      - "/opt/mito/fastapi/chroma_db:/app/chroma_db"
-      - "/opt/mito/fastapi/chroma_db_semantic:/app/chroma_db_semantic"
-    options:
-      restart: unless-stopped
+      - '/opt/mito/fastapi/chroma_db:/app/chroma_db'
+      - '/opt/mito/fastapi/chroma_db_semantic:/app/chroma_db_semantic'

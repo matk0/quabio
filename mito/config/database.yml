@@ -19,7 +19,6 @@ default: &default
   # https://guides.rubyonrails.org/configuring.html#database-pooling
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
-
 development:
   <<: *default
   database: mito_development
@@ -82,17 +81,19 @@ production:
   primary: &primary_production
     <<: *default
     database: mito_production
-    username: mito
-    password: <%= ENV["MITO_DATABASE_PASSWORD"] %>
+    url: <%= Rails.application.credentials.db_url %>
   cache:
     <<: *primary_production
     database: mito_production_cache
+    url: <%= Rails.application.credentials.cache_db_url %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_production
     database: mito_production_queue
+    url: <%= Rails.application.credentials.queue_db_url %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
     database: mito_production_cable
+    url: <%= Rails.application.credentials.cable_db_url %>
     migrations_paths: db/cable_migrate
