@@ -26,7 +26,6 @@ registry:
 env:
   secret:
     - RAILS_MASTER_KEY
-    - DATABASE_URL
   clear:
     SOLID_QUEUE_IN_PUMA: true
     DB_HOST: DB_HOST
